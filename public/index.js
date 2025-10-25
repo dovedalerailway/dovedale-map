@@ -108,6 +108,8 @@ const context = canvas.getContext("2d");
 const elements = {
 	players: document.getElementById("players"),
 	tooltip: document.getElementById("tooltip"),
+	stationTooltip: document.getElementById("station-tooltip"),
+	wikiButton: document.getElementById("wiki-button"),
 	serversGrid: document.getElementById("servers-grid"),
 	connectionPopup: document.getElementById("connectionPopup"),
 	reconnectBtn: document.getElementById("reconnectBtn"),
@@ -285,6 +287,41 @@ const getPlayerAtPosition = (canvasX, canvasY) => {
 	return null;
 };
 
+// Station Detection
+const getStationAtPosition = (canvasX, canvasY) => {
+	if (state.currentScale > 300) return null;
+	
+	for (const [name, { x, y }] of Object.entries(AREA_MARKERS)) {
+		const baseCanvasPos = worldToCanvas(x, y);
+		const transform = context.getTransform();
+
+		const screenX =
+			baseCanvasPos.x * transform.a +
+			baseCanvasPos.y * transform.c +
+			transform.e;
+		const screenY =
+			baseCanvasPos.x * transform.b +
+			baseCanvasPos.y * transform.d +
+			transform.f;
+
+		const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
+		context.font = markerFontSize + "px Inter";
+		const textDimensions = context.measureText(name);
+		const hitWidth = textDimensions.width;
+		const hitHeight = markerFontSize;
+		const hitPadding = 5;
+
+		if (canvasX >= screenX - hitWidth/2 - hitPadding &&
+			canvasX <= screenX + hitWidth/2 + hitPadding &&
+			canvasY >= screenY - hitHeight - hitPadding &&
+			canvasY <= screenY + hitPadding) {
+			return { name, x, y };
+		}
+	}
+	
+	return null;
+};
+
 // Tooltip Management
 const updateTooltip = (player, mouseX, mouseY) => {
 	if (!player) {
@@ -418,6 +455,49 @@ const updateTooltip = (player, mouseX, mouseY) => {
 	elements.tooltip.style.left = `${finalX}px`;
 	elements.tooltip.style.top = `${finalY}px`;
 	elements.tooltip.style.visibility = "visible";
+};
+
+// Station Tooltip Management
+const updateStationTooltip = (station, mouseX, mouseY) => {
+	if (!station) {
+		elements.stationTooltip.classList.add("hidden");
+		return;
+	}
+	const stationNameElement = elements.stationTooltip.querySelector("#station-name div");
+	if (stationNameElement) stationNameElement.textContent = station.name;
+	const baseCanvasPos = worldToCanvas(station.x, station.y);
+	const transform = context.getTransform();
+	const screenX =
+		baseCanvasPos.x * transform.a +
+		baseCanvasPos.y * transform.c +
+		transform.e;
+	const screenY =
+		baseCanvasPos.x * transform.b +
+		baseCanvasPos.y * transform.d +
+		transform.f;
+	const canvasRect = canvas.getBoundingClientRect();
+	const tooltipX = canvasRect.left + screenX;
+	const tooltipY = canvasRect.top + screenY;
+	let finalX = tooltipX + 15;
+	let finalY = tooltipY - 40;
+	elements.stationTooltip.classList.remove("hidden");
+	elements.stationTooltip.style.visibility = "hidden";
+	const tooltipRect = elements.stationTooltip.getBoundingClientRect();
+	if (finalX + tooltipRect.width > window.innerWidth) {
+		finalX = tooltipX - tooltipRect.width - 15;
+	}
+	if (finalY < 0) {
+		finalY = tooltipY + 20;
+	}
+	if (finalY + tooltipRect.height > window.innerHeight) {
+		finalY = tooltipY - tooltipRect.height - 20;
+	}
+	if (finalX < 0) {
+		finalX = tooltipX + 15;
+	}
+	elements.stationTooltip.style.left = `${finalX}px`;
+	elements.stationTooltip.style.top = `${finalY}px`;
+	elements.stationTooltip.style.visibility = "visible";
 };
 
 let resizeTimeout = null;
@@ -890,6 +970,20 @@ const handleMouseEvents = () => {
 		},
 		{ passive: false },
 	);
+
+	canvas.addEventListener("click", (event) => {
+		if (state.isDragging) return;
+		const mousePos = getCanvasCoordinates(event);
+		const station = getStationAtPosition(mousePos.x, mousePos.y);
+		
+		if (station) {
+			elements.tooltip.classList.add("hidden");
+			state.hoveredPlayer = null;
+			updateStationTooltip(station, event.clientX, event.clientY);
+		} else {
+			elements.stationTooltip.classList.add("hidden");
+		}
+	});
 };
 
 const handleTouchEvents = () => {
@@ -973,6 +1067,18 @@ elements.reconnectBtn.addEventListener("click", () => {
 	
 	state.reconnectAttempts = 0;
 	attemptReconnect();
+});
+
+// Wiki button event listener
+elements.wikiButton.addEventListener("click", () => {
+	const stationNameElement = elements.stationTooltip.querySelector("#station-name div");
+	if (stationNameElement) {
+		const stationName = stationNameElement.textContent;
+		const encodedStationName = encodeURIComponent(stationName);
+		const wikiUrl = `https://dovedale.wiki/wiki/${encodedStationName}`;
+		window.open(wikiUrl, '_blank');
+		elements.stationTooltip.classList.add("hidden");
+	}
 });
 
 // Initialize Application

@@ -138,6 +138,18 @@
 		</div>
 	</div>
 
+	<div id="station-tooltip"
+		class="pl-3 pr-3.5 py-3 bg-zinc-800 rounded-2xl inline-flex flex-col justify-start items-start gap-2.5 fixed hidden sm:max-w-md max-w-[90vw] z-20">
+		<div id="station-name" class="inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">train</span>
+			<div class="text-xl">Station Name</div>
+		</div>
+		<button id="wiki-button" class="inline-flex justify-center items-center gap-1.5 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg transition-colors duration-200 text-white w-full">
+			<span class="material-symbols-outlined">open_in_new</span>
+			<div class="text-sm font-medium">Open Wiki Page</div>
+		</button>
+	</div>
+
 	<a class="fixed bottom-2 right-2 flex p-2 align-center bg-zinc-800 rounded-lg hidden z-20" target="_blank"
 		href="https://map.dovedale.wiki" id="pop-out">
 		<i class="material-symbols-outlined">arrow_outward</i>
