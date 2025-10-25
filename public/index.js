@@ -857,14 +857,32 @@ const drawScene = () => {
 	const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
 	Object.entries(AREA_MARKERS).forEach(([name, { x, y }]) => {
 		const canvasPos = worldToCanvas(x, y);
-		context.fillStyle = "white";
 		context.font = markerFontSize + "px Inter";
 		const textDimensions = context.measureText(name);
+		const padding = markerFontSize * 0.4;
+		const backgroundWidth = textDimensions.width + padding * 2;
+		const backgroundHeight = markerFontSize + padding * 0.8;
+		const backgroundX = canvasPos.x - backgroundWidth / 2;
+		const backgroundY = canvasPos.y - backgroundHeight / 2;
+		const cornerRadius = Math.min(markerFontSize * 0.4, 8);
+
+		context.fillStyle = "rgba(39, 39, 42, 0.9)";
+		context.beginPath();
+		context.roundRect(backgroundX, backgroundY, backgroundWidth, backgroundHeight, cornerRadius);
+		context.fill();
+
+		context.strokeStyle = "rgba(63, 63, 70, 0.5)";
+		context.lineWidth = Math.max(0.5, markerFontSize * 0.05);
+		context.stroke();
+
+		context.fillStyle = "white";
+		context.textBaseline = "middle";
 		context.fillText(
 			name,
 			canvasPos.x - textDimensions.width / 2,
 			canvasPos.y,
 		);
+		context.textBaseline = "alphabetic";
 	});
 };
 
