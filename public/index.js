@@ -20,6 +20,14 @@ const MAP_CONFIG = {
 	totalHeight: 13724,
 };
 
+const QUALITY_CONFIG = {
+	high: { folder: 'high', label: 'High', color: 'bg-green-500' },
+	medium: { folder: 'medium', label: 'Medium', color: 'bg-yellow-500' },
+	low: { folder: 'low', label: 'Low', color: 'bg-red-500' }
+};
+
+let currentQuality = localStorage.getItem('mapQuality') || 'high';
+
 const AREA_MARKERS = {
 	"Gleethrop End": {
 		x: 1274,
@@ -887,12 +895,17 @@ const drawScene = () => {
 };
 
 // Map Loading
-const loadMapImages = () => {
+const loadMapImages = (quality = currentQuality) => {
+	state.loadedImages = 0;
+	state.mapImages = [];
+	
+	const qualityFolder = QUALITY_CONFIG[quality]?.folder || 'high';
+	
 	for (let row = 0; row < MAP_CONFIG.rows; row++) {
 		state.mapImages[row] = [];
 		for (let col = 0; col < MAP_CONFIG.cols; col++) {
 			const img = new Image();
-			img.src = `/images/row-${row + 1}-column-${col + 1}.png`;
+			img.src = `/images/${qualityFolder}/row-${row + 1}-column-${col + 1}.png`;
 
 			img.onload = () => {
 				state.loadedImages++;
@@ -1099,12 +1112,57 @@ elements.wikiButton.addEventListener("click", () => {
 	}
 });
 
+// Quality Selector
+const initQualitySelector = () => {
+	const qualityBtn = document.getElementById('quality-selector-btn');
+	const qualityDropdown = document.getElementById('quality-dropdown');
+	const qualityIndicator = document.getElementById('quality-indicator');
+	const qualityOptions = document.querySelectorAll('.quality-option');
+	const updateQualityDisplay = (quality) => {
+		const config = QUALITY_CONFIG[quality];
+		if (config) {
+			qualityIndicator.className = `w-4 h-4 rounded-full ${config.color}`;
+			qualityBtn.title = `Map Quality: ${config.label}`;
+			qualityOptions.forEach(option => {
+				option.classList.remove('active');
+				if (option.dataset.quality === quality) {
+					option.classList.add('active');
+				}
+			});
+		}
+	};
+	updateQualityDisplay(currentQuality);
+	qualityBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		qualityDropdown.classList.toggle('hidden');
+	});
+	document.addEventListener('click', (e) => {
+		if (!qualityBtn.contains(e.target) && !qualityDropdown.contains(e.target)) {
+			qualityDropdown.classList.add('hidden');
+		}
+	});
+	qualityOptions.forEach(option => {
+		option.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const selectedQuality = option.dataset.quality;
+			if (selectedQuality !== currentQuality) {
+				localStorage.setItem('mapQuality', selectedQuality);
+				currentQuality = selectedQuality;
+				updateQualityDisplay(selectedQuality);
+				qualityDropdown.classList.add('hidden');
+				window.location.reload();
+			}
+		});
+	});
+};
+
 // Initialize Application
 const init = () => {
 	trackTransforms();
 	loadMapImages();
 	handleMouseEvents();
 	handleTouchEvents();
+	initQualitySelector();
 	window.addEventListener('resize', handleWindowResize);
 
 	canvas.width = window.innerWidth;
