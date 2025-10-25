@@ -108,7 +108,7 @@ const context = canvas.getContext("2d");
 const elements = {
 	players: document.getElementById("players"),
 	tooltip: document.getElementById("tooltip"),
-	serverSelect: document.getElementById("servers"),
+	serversGrid: document.getElementById("servers-grid"),
 	connectionPopup: document.getElementById("connectionPopup"),
 	reconnectBtn: document.getElementById("reconnectBtn"),
 };
@@ -620,9 +620,6 @@ const resetReconnection = () => {
 
 const updateServerList = (data = null) => {
 	const currentServers = Object.keys(state.serverData);
-	const existingServers = Array.from(elements.serverSelect.options)
-		.slice(1)
-		.map((opt) => opt.value);
 
 	// Only process player data if data is provided
 	if (data?.players) {
@@ -647,15 +644,24 @@ const updateServerList = (data = null) => {
 	}
 
 	// Always rebuild the server list to ensure player counts are current
-	const selectedValue = elements.serverSelect.value;
 	const totalPlayersCount = Object.values(state.serverData).reduce(
 		(count, serverInfo) =>
 			count + (Array.isArray(serverInfo.players) ? serverInfo.players.length : 0),
 		0,
 	);
 
-	let html = `<option value="all">All Servers (${totalPlayersCount} players)</option>`;
+	let html = '';
 
+	// All Servers card
+	const allServersActive = state.currentServer === "all" ? " bg-blue-600 text-white" : " bg-zinc-800 text-zinc-300 hover:bg-zinc-700";
+	html += `
+		<div class="server-card cursor-pointer p-3 rounded-lg transition-colors duration-200${allServersActive}" data-server="all">
+			<div class="font-semibold text-sm">All Servers</div>
+			<div class="text-xs opacity-75">${totalPlayersCount} players</div>
+		</div>
+	`;
+
+	// Individual Server cards
 	currentServers.forEach((jobId) => {
 		const serverName =
 			jobId.length > 6
@@ -664,18 +670,20 @@ const updateServerList = (data = null) => {
 		const playerCount = Array.isArray(state.serverData[jobId]?.players)
 			? state.serverData[jobId].players.length
 			: 0;
-		const selected = selectedValue === jobId ? " selected" : "";
-		html += `<option value="${jobId}"${selected}>${serverName} (${playerCount} / 50 players)</option>`;
+		const isActive = state.currentServer === jobId ? " bg-blue-600 text-white" : " bg-zinc-800 text-zinc-300 hover:bg-zinc-700";
+		html += `
+			<div class="server-card cursor-pointer p-3 rounded-lg transition-colors duration-200${isActive}" data-server="${jobId}">
+				<div class="font-semibold text-sm">${serverName}</div>
+				<div class="text-xs opacity-75">${playerCount} / 50 players</div>
+			</div>
+		`;
 	});
 
-	elements.serverSelect.innerHTML = html;
+	elements.serversGrid.innerHTML = html;
 
 	// Handle server selection if current server no longer exists
-	if (selectedValue !== "all" && !currentServers.includes(selectedValue)) {
-		elements.serverSelect.value = "all";
+	if (state.currentServer !== "all" && !currentServers.includes(state.currentServer)) {
 		state.currentServer = "all";
-	} else {
-		elements.serverSelect.value = selectedValue;
 	}
 };
 
@@ -947,9 +955,14 @@ const handleTouchEvents = () => {
 };
 
 // Event Listeners
-elements.serverSelect.addEventListener("change", () => {
-	state.currentServer = elements.serverSelect.value;
-	drawScene();
+elements.serversGrid.addEventListener("click", (event) => {
+	const serverCard = event.target.closest('.server-card');
+	if (serverCard) {
+		const serverId = serverCard.getAttribute('data-server');
+		state.currentServer = serverId;
+		updateServerList();
+		drawScene();
+	}
 });
 
 elements.reconnectBtn.addEventListener("click", () => {
@@ -974,8 +987,12 @@ const init = () => {
 	canvas.height = window.innerHeight;
 
 	drawScene();
-	elements.serverSelect.innerHTML =
-		'<option value="all">All Servers (0 players)</option>';
+	elements.serversGrid.innerHTML = `
+		<div class="server-card cursor-pointer p-3 rounded-lg transition-colors duration-200 bg-blue-600 text-white" data-server="all">
+			<div class="font-semibold text-sm">All Servers</div>
+			<div class="text-xs opacity-75">0 players</div>
+		</div>
+	`;
 	createWebSocket();
 };
 
