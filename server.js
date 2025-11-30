@@ -1,14 +1,13 @@
 require('dotenv').config();
 
 const express = require('express');
-const bodyParser = require('body-parser');
 const app = express();
 require('express-ws')(app);
 const PORT = process.env.PORT || 3000;
 const ROBLOX_SECRET = process.env.ROBLOX_OTHER_KEY || 'TEST';
 
 app.use(express.static('public'));
-app.use(bodyParser.json());
+app.use(express.json());
 
 let webhooks = [];
 
