@@ -832,7 +832,7 @@ const drawScene = () => {
 
 			// Highlight around the actual player circle
 			context.strokeStyle = "yellow";
-			context.lineWidth = 2;
+			context.lineWidth = 2 * dotScaleFactor;
 			context.beginPath();
 			context.arc(pos.x, pos.y, radius + 3, 0, Math.PI * 2); // slightly larger than dot
 			context.stroke();
@@ -858,9 +858,18 @@ const drawScene = () => {
 			const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
 
 			// Highlight around the station rectangle
-			context.strokeStyle = "yellow";
-			context.lineWidth = 5;
 			drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, radius);
+			if (boxWidth < 2 * radius) radius = boxWidth / 2;
+			if (boxHeight < 2 * radius) radius = boxHeight / 2;
+			context.beginPath();
+			context.moveTo(boxX + radius, boxY);
+			context.arcTo(boxX + boxWidth, boxY, boxX + boxWidth, boxY + boxHeight, radius);
+			context.arcTo(boxX + boxWidth, boxY + boxHeight, boxX, boxY + boxHeight, radius);
+			context.arcTo(boxX, boxY + boxHeight, boxX, boxY, radius);
+			context.arcTo(boxX, boxY, boxX + boxWidth, boxY, radius);
+			context.closePath();
+			context.lineWidth = 5 * dotScaleFactor;
+			context.strokeStyle = "yellow";
 			context.stroke();
 		}
 	}
