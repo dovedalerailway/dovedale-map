@@ -818,30 +818,53 @@ const drawScene = () => {
 		context.fillText(name, pos.x - textWidth / 2, boxY + padY + ascent);
 	});
 	if (state.highlightTarget) {
-		if (state.highlightTarget.type === "player") {
-			const player = state.getAllPlayers().find(
+	if (state.highlightTarget.type === "player") {
+		const player = state.getAllPlayers().find(
 			p => (p.username ?? "").toLowerCase() === state.highlightTarget.name.toLowerCase()
-			);
-			if (player) {
-				const pos = worldToCanvas(player.position?.x ?? 0, player.position?.y ?? 0);
-				context.strokeStyle = "yellow";
-				context.lineWidth = 2;
-				context.beginPath();
-				context.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
-				context.stroke();
-			}
-		} else if (state.highlightTarget.type === "station") {
-			const coords = AREA_MARKERS[state.highlightTarget.name];
-			if (coords) {
-				const pos = worldToCanvas(coords.x, coords.y);
-				context.strokeStyle = "yellow";
-				context.lineWidth = 2;
-				context.beginPath();
-				context.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
-				context.stroke();
-			}
+		);
+		if (player) {
+			const pos = worldToCanvas(player.position?.x ?? 0, player.position?.y ?? 0);
+			const name = player.username ?? "Unknown";
+			const isHovered = state.hoveredPlayer?.username === name;
+			const baseRadius = isHovered ? 2.5 : 2;
+			const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
+			const radius = baseRadius * dotScaleFactor;
+
+			// Highlight around the actual player circle
+			context.strokeStyle = "yellow";
+			context.lineWidth = 2;
+			context.beginPath();
+			context.arc(pos.x, pos.y, radius + 3, 0, Math.PI * 2); // slightly larger than dot
+			context.stroke();
+		}
+	} else if (state.highlightTarget.type === "station") {
+		const coords = AREA_MARKERS[state.highlightTarget.name];
+		if (coords) {
+			const pos = worldToCanvas(coords.x, coords.y);
+			const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
+			const metrics = context.measureText(state.highlightTarget.name);
+			const textWidth = metrics.width;
+			const ascent = metrics.actualBoundingBoxAscent || markerFontSize * 0.8;
+			const descent = metrics.actualBoundingBoxDescent || markerFontSize * 0.2;
+			const textHeight = ascent + descent;
+
+			const padX = markerFontSize * 0.6;
+			const padY = markerFontSize * 0.4;
+			const boxWidth = textWidth + padX * 2;
+			const boxHeight = textHeight + padY * 2;
+
+			const boxX = pos.x - boxWidth / 2;
+			const boxY = pos.y - boxHeight / 2;
+			const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
+
+			// Highlight around the station rectangle
+			context.strokeStyle = "yellow";
+			context.lineWidth = 5;
+			drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, radius);
+			context.stroke();
 		}
 	}
+}
 };
 
 // Map Loading
