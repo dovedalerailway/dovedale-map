@@ -1058,7 +1058,7 @@ function showHints(matches) {
   	searchHints.innerHTML = matches.map(m => `
     <li class="px-2 py-1 hover:bg-zinc-700 cursor-pointer" 
         data-type="${m.type}" data-name="${m.name}">
-      ${m.type === "player" ? "👤" : "📍"} ${m.name}
+      ${m.type === "player" ? "[player] " : "[station]"} ${m.name}
     </li>
   	`).join("");
   	searchHints.classList.remove("hidden");
