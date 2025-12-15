@@ -267,169 +267,188 @@ const zoomAt = (screenX, screenY, scaleFactor) => {
 
 // Player Detection
 const getPlayerAtPosition = (canvasX, canvasY) => {
-	const playersToCheck = state.getAllPlayers();
-
-	for (const player of playersToCheck) {
-		const worldX = player.position?.x ?? 0;
-		const worldY = player.position?.y ?? 0;
-
-		const baseCanvasPos = worldToCanvas(worldX, worldY);
-		const transform = context.getTransform();
-
-		const screenX =
-			baseCanvasPos.x * transform.a +
-			baseCanvasPos.y * transform.c +
-			transform.e;
-		const screenY =
-			baseCanvasPos.x * transform.b +
-			baseCanvasPos.y * transform.d +
-			transform.f;
-
-		const baseRadius = 3;
-		const scaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
-		const hitRadius = baseRadius * scaleFactor * Math.abs(transform.a);
-
-		const distance = Math.hypot(screenX - canvasX, screenY - canvasY);
-
-		if (distance <= hitRadius) return player;
-	}
-
-	return null;
+    const playersToShow = state.getAllPlayers();
+    const groups = groupPlayers(playersToShow);
+    const transform = context.getTransform();
+    for (const group of groups) {
+	    const worldX = group[0].position?.x ?? 0;
+        const worldY = group[0].position?.y ?? 0;
+        const baseCanvasPos = worldToCanvas(worldX, worldY);
+        const screenX =
+	        baseCanvasPos.x * transform.a +
+	        baseCanvasPos.y * transform.c +
+	        transform.e;
+        const screenY =
+	        baseCanvasPos.x * transform.b +
+	        baseCanvasPos.y * transform.d +
+	        transform.f;
+        // Use the same radius as drawScene
+        const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
+        const baseRadius = group.length > 1 ? 4 : 2;
+        const hitRadius = baseRadius * dotScaleFactor * Math.abs(transform.a);
+        const distance = Math.hypot(screenX - canvasX, screenY - canvasY);
+        if (distance <= hitRadius) {
+	        if (group.length > 1) return group;
+		        return group[0];
+	        }
+    }
+    return null;
 };
 
 // Tooltip Management
-const updateTooltip = (player, mouseX, mouseY) => {
-	if (!player) {
-		elements.tooltip.classList.add("hidden");
-		return;
-	}
+const updateTooltip = (playerOrGroup, mouseX, mouseY) => {
+    if (!playerOrGroup) {
+	    elements.tooltip.classList.add("hidden");
+	    return;
+    }
 
-	const name = player.username ?? "Unknown";
+	const group = Array.isArray(playerOrGroup) ? playerOrGroup : [playerOrGroup];
+    const isGroup = group.length > 1;
 
-	const playerElement = elements.tooltip.querySelector("#player div");
-	if (playerElement) playerElement.textContent = name;
+    let name = isGroup ? group.map(p => p.username ?? "Unknown").join(", ") : (group[0].username ?? "Unknown");
 
-	// Show train data if available
-	const destinationSection = elements.tooltip.querySelector("#destination");
-	const trainNameSection = elements.tooltip.querySelector("#train-name");
-	const headcodeSection = elements.tooltip.querySelector("#headcode");
-	const trainClassSection = elements.tooltip.querySelector("#train-class");
+    const playerElement = elements.tooltip.querySelector("#player div");
+    if (playerElement) playerElement.textContent = name;
 
-	if (player.trainData && Array.isArray(player.trainData)) {
-		const [destination, trainClass, headcode, trainType] = player.trainData;
+    const destinationSection = elements.tooltip.querySelector("#destination");
+    const trainNameSection = elements.tooltip.querySelector("#train-name");
+    const headcodeSection = elements.tooltip.querySelector("#headcode");
+    const trainClassSection = elements.tooltip.querySelector("#train-class");
 
-		// Show destination
-		if (destination && destination !== "Unknown" && destinationSection) {
-			const destDiv = destinationSection.querySelector("div");
-			if (destDiv) destDiv.textContent = destination;
-			destinationSection.style.display = "flex";
-		} else if (destinationSection) {
+    if (!isGroup && group[0].trainData && Array.isArray(group[0].trainData)) {
+	    const [destination, trainClass, headcode, trainType] = group[0].trainData;
+
+	    if (destination && destination !== "Unknown" && destinationSection) {
+		    const destDiv = destinationSection.querySelector("div");
+
+		    if (destDiv) destDiv.textContent = destination;
+		    destinationSection.style.display = "flex";
+
+	    } else if (destinationSection) {
 			destinationSection.style.display = "none";
-		}
+	       	}
+	    if (trainClass && trainClass !== "Unknown" && trainClassSection) {
+		    const classDiv = trainClassSection.querySelector("div");
 
-		// Show train class
-		if (trainClass && trainClass !== "Unknown" && trainClassSection) {
-			const classDiv = trainClassSection.querySelector("div");
-			if (classDiv) classDiv.textContent = trainClass;
-			trainClassSection.style.display = "flex";
-		} else if (trainClassSection) {
-			trainClassSection.style.display = "none";
-		}
+		    if (classDiv) classDiv.textContent = trainClass;
+		    trainClassSection.style.display = "flex";
+	    } else if (trainClassSection) {
+		    trainClassSection.style.display = "none";
+	    }
+	    if (
+		    headcode &&
+		    headcode !== "----" &&
+		    headcode !== "" &&
+		    headcodeSection
+	    ) {
+		    const headDiv = headcodeSection.querySelector("div");
 
-		// Show headcode if not empty
-		if (
-			headcode &&
-			headcode !== "----" &&
-			headcode !== "" &&
-			headcodeSection
-		) {
-			const headDiv = headcodeSection.querySelector("div");
-			if (headDiv) headDiv.textContent = headcode;
-			headcodeSection.style.display = "flex";
-		} else if (headcodeSection) {
-			headcodeSection.style.display = "none";
-		}
-
-		// Hide train name section (not used in this data structure)
-		if (trainNameSection) trainNameSection.style.display = "none";
-	} else {
-		// Hide all train data sections if no train data
-		[
-			destinationSection,
-			trainNameSection,
-			headcodeSection,
-			trainClassSection,
-		].forEach((section) => {
-			if (section) section.style.display = "none";
-		});
-	}
-
-	const playerSection = elements.tooltip.querySelector("#player");
-	if (playerSection) playerSection.style.display = "flex";
-
-	const serverSection = elements.tooltip.querySelector("#server");
-	if (serverSection && state.currentServer === "all") {
-		const serverDiv = serverSection.querySelector("div");
-		if (serverDiv) {
-			let serverName = "Unknown";
-			for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
-				if (serverInfo.players && serverInfo.players.includes(player)) {
-					serverName =
-						jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
-					break;
-				}
+		    if (headDiv) headDiv.textContent = headcode;
+		    headcodeSection.style.display = "flex";
+	    } else if (headcodeSection) {
+		    headcodeSection.style.display = "none";
+	    }
+	    if (trainNameSection) trainNameSection.style.display = "none";
+        } else if (isGroup) {
+	        let destinations = {}, classes = {}, headcodes = {};
+	        let withTrainData = 0;
+	        group.forEach(p => {
+		        if (p.trainData && Array.isArray(p.trainData)) {
+			        withTrainData++;
+			        const [destination, trainClass, headcode] = p.trainData;
+			        if (destination && destination !== "Unknown") destinations[destination] = (destinations[destination] || 0) + 1;
+			        if (trainClass && trainClass !== "Unknown") classes[trainClass] = (classes[trainClass] || 0) + 1;
+			        if (headcode && headcode !== "----" && headcode !== "") headcodes[headcode] = (headcodes[headcode] || 0) + 1;
+		        }
+	        });
+			
+			function summaryList(arr) {
+				return arr.length ? arr.join(", ") : "-";
 			}
-			serverDiv.textContent = serverName;
-		}
-		serverSection.style.display = "flex";
-	} else if (serverSection) {
-		serverSection.style.display = "none";
-	}
+			
+			const destList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[0] : null).filter(v => v && v !== "Unknown");
+			const classList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[1] : null).filter(v => v && v !== "Unknown");
+			const headcodeList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[2] : null).filter(v => v && v !== "----" && v !== "");
+			const destSummary = summaryList(destList);
+	        const classSummary = summaryList(classList);
+		    const headcodeSummary = summaryList(headcodeList);
 
-	// Position tooltip
-	const worldX = player.position?.x ?? 0;
-	const worldY = player.position?.y ?? 0;
-	const baseCanvasPos = worldToCanvas(worldX, worldY);
-	const transform = context.getTransform();
+	        if (destinationSection) {
+		        const destDiv = destinationSection.querySelector("div");
+		        if (destDiv) destDiv.textContent = destSummary;
+		        destinationSection.style.display = "flex";
+	        }
+	        if (trainClassSection) {
+		        const classDiv = trainClassSection.querySelector("div");
+		        if (classDiv) classDiv.textContent = classSummary;
+		        trainClassSection.style.display = "flex";
+	        }
+	        if (headcodeSection) {
+		        const headDiv = headcodeSection.querySelector("div");
+		        if (headDiv) headDiv.textContent = headcodeSummary;
+		        headcodeSection.style.display = "flex";
+	        }
+	        if (trainNameSection) trainNameSection.style.display = "none";
+        } else {
+	        [destinationSection, trainNameSection, headcodeSection, trainClassSection].forEach((section) => {
+		        if (section) section.style.display = "none";
+	        });
+        }
 
-	const screenX =
-		baseCanvasPos.x * transform.a +
-		baseCanvasPos.y * transform.c +
-		transform.e;
-	const screenY =
-		baseCanvasPos.x * transform.b +
-		baseCanvasPos.y * transform.d +
-		transform.f;
+        const playerSection = elements.tooltip.querySelector("#player");
+        if (playerSection) playerSection.style.display = "flex";
 
-	const canvasRect = canvas.getBoundingClientRect();
-	const tooltipX = canvasRect.left + screenX;
-	const tooltipY = canvasRect.top + screenY;
+        const serverSection = elements.tooltip.querySelector("#server");
+        if (serverSection && state.currentServer === "all") {
+	        const serverDiv = serverSection.querySelector("div");
+	        if (serverDiv) {
+		        let serverName = "Unknown";
+		        // For group, just show the first's server
+		        const firstPlayer = group[0];
+		        for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
+			        if (serverInfo.players && serverInfo.players.includes(firstPlayer)) {
+				        serverName = jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
+				        break;
+			        }
+		        }
+		        serverDiv.textContent = serverName;
+	        }
+	        serverSection.style.display = "flex";
+        } else if (serverSection) {
+	        serverSection.style.display = "none";
+        }
 
-	let finalX = tooltipX + 15;
-	let finalY = tooltipY - 40;
-
-	elements.tooltip.classList.remove("hidden");
-	elements.tooltip.style.visibility = "hidden";
-
-	const tooltipRect = elements.tooltip.getBoundingClientRect();
-
-	// Boundary checks
-	if (finalX + tooltipRect.width > window.innerWidth) {
-		finalX = tooltipX - tooltipRect.width - 15;
-	}
-	if (finalY < 0) {
-		finalY = tooltipY + 20;
-	}
-	if (finalY + tooltipRect.height > window.innerHeight) {
-		finalY = tooltipY - tooltipRect.height - 20;
-	}
-	if (finalX < 0) {
-		finalX = tooltipX + 15;
-	}
-
-	elements.tooltip.style.left = `${finalX}px`;
-	elements.tooltip.style.top = `${finalY}px`;
-	elements.tooltip.style.visibility = "visible";
+        // Position tooltip at the group spot
+        const worldX = group[0].position?.x ?? 0;
+        const worldY = group[0].position?.y ?? 0;
+        const baseCanvasPos = worldToCanvas(worldX, worldY);
+        const transform = context.getTransform();
+       	const screenX = baseCanvasPos.x * transform.a + baseCanvasPos.y * transform.c + transform.e;
+       	const screenY = baseCanvasPos.x * transform.b + baseCanvasPos.y * transform.d + transform.f;
+       	const canvasRect = canvas.getBoundingClientRect();
+       	const tooltipX = canvasRect.left + screenX;
+       	const tooltipY = canvasRect.top + screenY;
+       	let finalX = tooltipX + 15;
+       	let finalY = tooltipY - 40;
+       	elements.tooltip.classList.remove("hidden");
+       	elements.tooltip.style.visibility = "hidden";
+       	const tooltipRect = elements.tooltip.getBoundingClientRect();
+       	// Boundary checks
+       	if (finalX + tooltipRect.width > window.innerWidth) {
+	   	    finalX = tooltipX - tooltipRect.width - 15;
+       	}
+       	if (finalY < 0) {
+	   	    finalY = tooltipY + 20;
+       	}
+       	if (finalY + tooltipRect.height > window.innerHeight) {
+	   	    finalY = tooltipY - tooltipRect.height - 20;
+       	}
+       	if (finalX < 0) {
+	   	    finalX = tooltipX + 15;
+       	}
+       	elements.tooltip.style.left = `${finalX}px`;
+       	elements.tooltip.style.top = `${finalY}px`;
+       	elements.tooltip.style.visibility = "visible";
 };
 
 let resizeTimeout = null;
@@ -495,7 +514,7 @@ const createWebSocket = () => {
 		state.ws = null;
 	}
 	
-	state.ws = new WebSocket(`wss://${window.location.host}/ws`);
+	state.ws = new WebSocket(`ws://${window.location.host}/ws`);
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
@@ -691,124 +710,196 @@ const updateServerList = (data = null) => {
 	}
 };
 
+// --- Player Grouping Helper ---
+function groupPlayers(players, groupDistance = 2) {
+    // groupDistance is in canvas pixels (smaller for tighter grouping)
+    const groups = [];
+    const used = new Set();
+    for (let i = 0; i < players.length; i++) {
+	    if (used.has(i)) continue;
+	    const group = [players[i]];
+	    const posA = worldToCanvas(players[i].position?.x ?? 0, players[i].position?.y ?? 0);
+	    for (let j = i + 1; j < players.length; j++) {
+		    if (used.has(j)) continue;
+		    const posB = worldToCanvas(players[j].position?.x ?? 0, players[j].position?.y ?? 0);
+		    const dist = Math.hypot(posA.x - posB.x, posA.y - posB.y);
+		    if (dist < groupDistance) {
+			    group.push(players[j]);
+			    used.add(j);
+		    }
+	    }
+	    used.add(i);
+	    groups.push(group);
+    }
+    return groups;
+}
+
+// --- Persistent group color map for session ---
+const persistentGroupColorMap = new Map();
+function getPersistentGroupColor(group) {
+	// Use sorted usernames as key for group
+	const key = group.map(p => p.username ?? '').sort().join(',');
+	if (persistentGroupColorMap.has(key)) return persistentGroupColorMap.get(key);
+	// Pick a random color from COLORS not already in use for visible groups
+	const usedColors = new Set(Array.from(persistentGroupColorMap.values()));
+	const availableColors = COLORS.filter(c => !usedColors.has(c));
+	let color;
+	if (availableColors.length > 0) {
+		color = availableColors[Math.floor(Math.random() * availableColors.length)];
+	} else {
+		color = COLORS[Math.floor(Math.random() * COLORS.length)];
+	}
+	persistentGroupColorMap.set(key, color);
+	return color;
+}
+
 // Rendering
 const drawScene = () => {
-	const transformedP1 = context.transformedPoint(0, 0);
-	const transformedP2 = context.transformedPoint(canvas.width, canvas.height);
-	context.clearRect(
-		transformedP1.x,
-		transformedP1.y,
-		transformedP2.x - transformedP1.x,
-		transformedP2.y - transformedP1.y,
-	);
+    const transformedP1 = context.transformedPoint(0, 0);
+    const transformedP2 = context.transformedPoint(canvas.width, canvas.height);
+    context.clearRect(
+	    transformedP1.x,
+	    transformedP1.y,
+	    transformedP2.x - transformedP1.x,
+	    transformedP2.y - transformedP1.y,
+    );
 
-	const mapAspectRatio = MAP_CONFIG.totalWidth / MAP_CONFIG.totalHeight;
-	const canvasAspectRatio = canvas.width / canvas.height;
+    const mapAspectRatio = MAP_CONFIG.totalWidth / MAP_CONFIG.totalHeight;
+    const canvasAspectRatio = canvas.width / canvas.height;
 
-	const scaleFactor =
-		mapAspectRatio > canvasAspectRatio
-			? canvas.width / MAP_CONFIG.totalWidth
-			: canvas.height / MAP_CONFIG.totalHeight;
+    const scaleFactor =
+	    mapAspectRatio > canvasAspectRatio
+		? canvas.width / MAP_CONFIG.totalWidth
+		: canvas.height / MAP_CONFIG.totalHeight;
 
-	const scaledMapWidth = MAP_CONFIG.totalWidth * scaleFactor;
-	const scaledMapHeight = MAP_CONFIG.totalHeight * scaleFactor;
-	const offsetX = (canvas.width - scaledMapWidth) / 2;
-	const offsetY = (canvas.height - scaledMapHeight) / 2;
+    const scaledMapWidth = MAP_CONFIG.totalWidth * scaleFactor;
+    const scaledMapHeight = MAP_CONFIG.totalHeight * scaleFactor;
+    const offsetX = (canvas.width - scaledMapWidth) / 2;
+    const offsetY = (canvas.height - scaledMapHeight) / 2;
 
-	const chunkWidth = MAP_CONFIG.totalWidth / MAP_CONFIG.cols;
-	const chunkHeight = MAP_CONFIG.totalHeight / MAP_CONFIG.rows;
-	const scaledChunkWidth = chunkWidth * scaleFactor;
-	const scaledChunkHeight = chunkHeight * scaleFactor;
+    const chunkWidth = MAP_CONFIG.totalWidth / MAP_CONFIG.cols;
+    const chunkHeight = MAP_CONFIG.totalHeight / MAP_CONFIG.rows;
+    const scaledChunkWidth = chunkWidth * scaleFactor;
+    const scaledChunkHeight = chunkHeight * scaleFactor;
 
-	context.imageSmoothingEnabled = false;
-	// Draw map tiles
-	for (let row = 0; row < MAP_CONFIG.rows; row++) {
-		for (let col = 0; col < MAP_CONFIG.cols; col++) {
-			const img = state.mapImages[row]?.[col];
-			if (img?.complete) {
-				const destX = offsetX + col * scaledChunkWidth;
-				const destY = offsetY + row * scaledChunkHeight;
+    context.imageSmoothingEnabled = false;
+    // Draw map tiles
+    for (let row = 0; row < MAP_CONFIG.rows; row++) {
+	    for (let col = 0; col < MAP_CONFIG.cols; col++) {
+		    const img = state.mapImages[row]?.[col];
+		    if (img?.complete) {
+			    const destX = offsetX + col * scaledChunkWidth;
+			    const destY = offsetY + row * scaledChunkHeight;
 
-				const overlap = Math.max(0.5, 2 / state.currentScale);
-				const drawWidth =
-					scaledChunkWidth + (col < MAP_CONFIG.cols - 1 ? overlap : 0);
-				const drawHeight =
-					scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
+			    const overlap = Math.max(0.5, 2 / state.currentScale);
+			    const drawWidth = scaledChunkWidth + (col < MAP_CONFIG.cols - 1 ? overlap : 0);
+			    const drawHeight = scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
+			    context.drawImage(
+				    img,
+				    0,
+				    0,
+				    img.width,
+				    img.height,
+				    destX,
+				    destY,
+				    drawWidth,
+				    drawHeight,
+			    );
+		    }
+	    }
+    }
+    context.imageSmoothingEnabled = true;
 
-				context.drawImage(
-					img,
-					0,
-					0,
-					img.width,
-					img.height,
-					destX,
-					destY,
-					drawWidth,
-					drawHeight,
-				);
-			}
-		}
-	}
-	context.imageSmoothingEnabled = true;
+    // Draw grouped players
+    const playersToShow = state.getAllPlayers();
+    elements.players.innerHTML = `Players: ${playersToShow.length}`;
 
-	// Draw players
-	const playersToShow = state.getAllPlayers();
-	elements.players.innerHTML = `Players: ${playersToShow.length}`;
+    const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
 
-	const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
+	// Group players that are close together
+	const groups = groupPlayers(playersToShow);
+	// Assign a persistent color to each group for the session
 
-	playersToShow.forEach((player) => {
-		const worldX = player.position?.x ?? 0;
-		const worldY = player.position?.y ?? 0;
-		const name = player.username ?? "Unknown";
-
+	groups.forEach((group) => {
+		// Use the first player's position for the group
+		const worldX = group[0].position?.x ?? 0;
+		const worldY = group[0].position?.y ?? 0;
+		const name = group[0].username ?? "Unknown";
 		const canvasPos = worldToCanvas(worldX, worldY);
-		const isHovered = state.hoveredPlayer?.username === name;
-		const baseRadius = isHovered ? 2.5 : 2;
+		const isHovered = Array.isArray(state.hoveredPlayer) ? state.hoveredPlayer.includes(group[0]) : (state.hoveredPlayer?.username === name && group.length === 1);
+		// Grouped spot is slightly bigger than single spot
+		const baseRadius = group.length > 1 ? 3 : (isHovered ? 2.5 : 2);
 		const radius = baseRadius * dotScaleFactor;
 
-		context.fillStyle = getPlayerColor(name);
+
+		// Use a blended color for groups, or just the first player's color
+		// Assign a random color from COLORS for each group dot (with >1 player)
+		let fillColor;
+		if (group.length > 1) {
+			fillColor = getPersistentGroupColor(group);
+		} else {
+			fillColor = getPlayerColor(name);
+		}
+		context.fillStyle = fillColor;
 		context.beginPath();
 		context.arc(canvasPos.x, canvasPos.y, radius, 0, Math.PI * 2);
 		context.fill();
 
-		context.strokeStyle = isHovered ? "white" : "black";
-		context.lineWidth = Math.max((isHovered ? 0.7 : 0.4) * scaleFactor, 0.25);
-		context.stroke();
-	});
-
-	if (state.currentScale > 300) return;
-	const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
-	Object.entries(AREA_MARKERS).forEach(([name, { x, y }]) => {
-		const pos = worldToCanvas(x, y);
-		context.font = `${markerFontSize}px Inter`;
-
-		const metrics = context.measureText(name);
-		const textWidth = metrics.width;
-		const ascent = metrics.actualBoundingBoxAscent || markerFontSize * 0.8;
-		const descent = metrics.actualBoundingBoxDescent || markerFontSize * 0.2;
-		const textHeight = ascent + descent;
-
-		const padX = markerFontSize * 0.6;
-		const padY = markerFontSize * 0.4;
-		const boxWidth = textWidth + padX * 2;
-		const boxHeight = textHeight + padY * 2;
-
-		const boxX = pos.x - boxWidth / 2;
-		const boxY = pos.y - boxHeight / 2;
-
-		const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
-		context.fillStyle = "#00000078";
-		context.strokeStyle = "transparent";
-		context.lineWidth = Math.max(0.5 * (markerFontSize / 10), 0.4);
-
-		drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, radius);
-		context.fill();
+		// Draw border
+		context.strokeStyle = group.length > 1 ? "#fff" : (isHovered ? "white" : "black");
+		context.lineWidth = Math.max((group.length > 1 ? 0.7 : (isHovered ? 0.7 : 0.4)) * scaleFactor, 0.18);
 		context.stroke();
 
-		context.fillStyle = "#fff";
-		context.fillText(name, pos.x - textWidth / 2, boxY + padY + ascent);
+	   // Draw group count if > 1
+	    if (group.length > 1) {
+			context.fillStyle = "#fff";
+			// Dynamically scale font size to fit the spot
+			let fontSize = radius * 1.7;
+			context.font = `${fontSize}px Inter`;
+			let text = group.length.toString();
+			let metrics = context.measureText(text);
+			// Shrink font if text is too wide for the spot
+			while (metrics.width > radius * 1.6 && fontSize > 6) {
+				fontSize -= 1;
+				context.font = `${fontSize}px Inter`;
+				metrics = context.measureText(text);
+			}
+			context.textAlign = "center";
+			context.textBaseline = "middle";
+			// Center the number exactly in the spot
+			context.fillText(text, canvasPos.x, canvasPos.y);
+		}
 	});
+
+    if (state.currentScale > 300) return;
+    const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
+		Object.entries(AREA_MARKERS).forEach(([name, { x, y }]) => {
+			const pos = worldToCanvas(x, y);
+			context.font = `${markerFontSize}px Inter`;
+			const metrics = context.measureText(name);
+			const textWidth = metrics.width;
+			const ascent = metrics.actualBoundingBoxAscent || markerFontSize * 0.8;
+			const descent = metrics.actualBoundingBoxDescent || markerFontSize * 0.2;
+			const textHeight = ascent + descent;
+			const padX = markerFontSize * 0.6;
+			const padY = markerFontSize * 0.4;
+			const boxWidth = textWidth + padX * 2;
+			const boxHeight = textHeight + padY * 2;
+
+			// Center the label above the marker
+			const boxX = pos.x - boxWidth / 2;
+			const boxY = pos.y - boxHeight - 6; // 6px gap above marker
+			const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
+			context.fillStyle = "#00000078";
+			context.strokeStyle = "transparent";
+			context.lineWidth = Math.max(0.5 * (markerFontSize / 10), 0.4);
+			drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, radius);
+			context.fill();
+			context.stroke();
+			context.fillStyle = "#fff";
+			context.textAlign = "center";
+			context.fillText(name, pos.x, boxY + padY + ascent);
+		});
 };
 
 // Map Loading
@@ -861,29 +952,36 @@ const handleMouseEvents = () => {
 	});
 
 	canvas.addEventListener("mousemove", (event) => {
-		if (state.isDragging) {
-			if (state.hoveredPlayer) {
-				state.hoveredPlayer = null;
-				elements.tooltip.classList.add("hidden");
-			}
+	    if (state.isDragging) {
+		    if (state.hoveredPlayer) {
+			    state.hoveredPlayer = null;
+			    elements.tooltip.classList.add("hidden");
+		    }
 
-			const mousePos = getCanvasCoordinates(event);
-			const currentPoint = context.transformedPoint(mousePos.x, mousePos.y);
-			const dx = currentPoint.x - state.dragStart.x;
-			const dy = currentPoint.y - state.dragStart.y;
+		    const mousePos = getCanvasCoordinates(event);
+		    const currentPoint = context.transformedPoint(mousePos.x, mousePos.y);
+		    const dx = currentPoint.x - state.dragStart.x;
+		    const dy = currentPoint.y - state.dragStart.y;
 
-			context.translate(dx, dy);
-			drawScene();
-		} else {
-			const mousePos = getCanvasCoordinates(event);
-			const player = getPlayerAtPosition(mousePos.x, mousePos.y);
+		    context.translate(dx, dy);
+		    drawScene();
+	    } else {
+		    const mousePos = getCanvasCoordinates(event);
+		    const playerOrGroup = getPlayerAtPosition(mousePos.x, mousePos.y);
+		    // Use shallow array compare for group hover
+		    let sameHover = false;
+		    if (Array.isArray(playerOrGroup) && Array.isArray(state.hoveredPlayer)) {
+			    sameHover = playerOrGroup.length === state.hoveredPlayer.length && playerOrGroup.every((p, i) => p === state.hoveredPlayer[i]);
+		    } else {
+			    sameHover = playerOrGroup === state.hoveredPlayer;
+		    }
 
-			if (player !== state.hoveredPlayer) {
-				state.hoveredPlayer = player;
-				updateTooltip(player, event.clientX, event.clientY);
-				drawScene();
-			}
-		}
+		    if (!sameHover) {
+			    state.hoveredPlayer = playerOrGroup;
+			    updateTooltip(playerOrGroup, event.clientX, event.clientY);
+			    drawScene();
+		    }
+	    }
 	});
 
 	canvas.addEventListener("mouseleave", () => {
