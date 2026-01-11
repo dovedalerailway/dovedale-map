@@ -292,197 +292,142 @@ const getPlayerAtPosition = (canvasX, canvasY) => {
 
 // Tooltip Management
 const updateTooltip = (playerOrGroup, mouseX, mouseY) => {
-    if (!playerOrGroup) {
-	    elements.tooltip.classList.add("hidden");
-	    return;
-    }
+	if (!playerOrGroup) {
+		elements.tooltip.classList.add("hidden");
+		return;
+	}
 
 	const group = Array.isArray(playerOrGroup) ? playerOrGroup : [playerOrGroup];
-    const isGroup = group.length > 1;
+	const isGroup = group.length > 1;
+	let name = isGroup ? group.map(p => p.username ?? "Unknown").join(", ") : (group[0].username ?? "Unknown");
 
-    let name = isGroup ? group.map(p => p.username ?? "Unknown").join(", ") : (group[0].username ?? "Unknown");
+	const playerElement = elements.tooltip.querySelector("#player div");
+	if (playerElement) playerElement.textContent = name;
+	const destinationSection = elements.tooltip.querySelector("#destination");
+	const trainNameSection = elements.tooltip.querySelector("#train-name");
+	const headcodeSection = elements.tooltip.querySelector("#headcode");
+	const trainClassSection = elements.tooltip.querySelector("#train-class");
 
-    const playerElement = elements.tooltip.querySelector("#player div");
-    if (playerElement) playerElement.textContent = name;
-	  const destinationSection = elements.tooltip.querySelector("#destination");
-	  const trainNameSection = elements.tooltip.querySelector("#train-name");
-	  const headcodeSection = elements.tooltip.querySelector("#headcode");
-	  const trainClassSection = elements.tooltip.querySelector("#train-class");
+	if (!isGroup && group[0].trainData && Array.isArray(group[0].trainData)) {
+		const [destination, trainClass, headcode, trainType] = group[0].trainData;
 
-    const destinationSection = elements.tooltip.querySelector("#destination");
-    const trainNameSection = elements.tooltip.querySelector("#train-name");
-    const headcodeSection = elements.tooltip.querySelector("#headcode");
-    const trainClassSection = elements.tooltip.querySelector("#train-class");
-
-if (!isGroup && group[0].trainData && Array.isArray(group[0].trainData)) {
-    const [destination, trainClass, headcode, trainType] = group[0].trainData;
-
-    if (destination && destination !== "Unknown" && destinationSection) {
-        const destinationDiv = destinationSection.querySelector("div");
-        if (destinationDiv) destinationDiv.textContent = destination;
-        destinationSection.style.display = "flex";
-    } else if (destinationSection) {
-        destinationSection.style.display = "none";
-    }
-
-    if (trainClass && trainClass !== "Unknown" && trainClassSection) {
-        const classDiv = trainClassSection.querySelector("div");
-        if (classDiv) classDiv.textContent = trainClass;
-        trainClassSection.style.display = "flex";
-    } else if (trainClassSection) {
-        trainClassSection.style.display = "none";
-    }
-
-    if (
-        headcode &&
-        headcode !== "----" &&
-        headcode !== "" &&
-        headcodeSection
-    ) {
-        const headDiv = headcodeSection.querySelector("div");
-        if (headDiv) headDiv.textContent = headcode;
-        headcodeSection.style.display = "flex";
-    } else if (headcodeSection) {
-        headcodeSection.style.display = "none";
-    }
-
-    if (trainNameSection) trainNameSection.style.display = "none";
-} else {
-    [
-        destinationSection,
-        trainNameSection,
-        headcodeSection,
-        trainClassSection,
-    ].forEach((section) => {
-        if (section) section.style.display = "none";
-    });
-}
-
-	    } else if (destinationSection) {
+		if (destination && destination !== "Unknown" && destinationSection) {
+			const destinationDiv = destinationSection.querySelector("div");
+			if (destinationDiv) destinationDiv.textContent = destination;
+			destinationSection.style.display = "flex";
+		} else if (destinationSection) {
 			destinationSection.style.display = "none";
-	       	}
-	    if (trainClass && trainClass !== "Unknown" && trainClassSection) {
-		    const classDiv = trainClassSection.querySelector("div");
+		}
 
-		    if (classDiv) classDiv.textContent = trainClass;
-		    trainClassSection.style.display = "flex";
-	    } else if (trainClassSection) {
-		    trainClassSection.style.display = "none";
-	    }
-	    if (
-		    headcode &&
-		    headcode !== "----" &&
-		    headcode !== "" &&
-		    headcodeSection
-	    ) {
-		    const headDiv = headcodeSection.querySelector("div");
+		if (trainClass && trainClass !== "Unknown" && trainClassSection) {
+			const classDiv = trainClassSection.querySelector("div");
+			if (classDiv) classDiv.textContent = trainClass;
+			trainClassSection.style.display = "flex";
+		} else if (trainClassSection) {
+			trainClassSection.style.display = "none";
+		}
 
-		    if (headDiv) headDiv.textContent = headcode;
-		    headcodeSection.style.display = "flex";
-	    } else if (headcodeSection) {
-		    headcodeSection.style.display = "none";
-	    }
-	    if (trainNameSection) trainNameSection.style.display = "none";
-        } else if (isGroup) {
-	        let destinations = {}, classes = {}, headcodes = {};
-	        let withTrainData = 0;
-	        group.forEach(p => {
-		        if (p.trainData && Array.isArray(p.trainData)) {
-			        withTrainData++;
-			        const [destination, trainClass, headcode] = p.trainData;
-			        if (destination && destination !== "Unknown") destinations[destination] = (destinations[destination] || 0) + 1;
-			        if (trainClass && trainClass !== "Unknown") classes[trainClass] = (classes[trainClass] || 0) + 1;
-			        if (headcode && headcode !== "----" && headcode !== "") headcodes[headcode] = (headcodes[headcode] || 0) + 1;
-		        }
-	        });
-			
-			function summaryList(arr) {
-				return arr.length ? arr.join(", ") : "-";
+		if (
+			headcode &&
+			headcode !== "----" &&
+			headcode !== "" &&
+			headcodeSection
+		) {
+			const headDiv = headcodeSection.querySelector("div");
+			if (headDiv) headDiv.textContent = headcode;
+			headcodeSection.style.display = "flex";
+		} else if (headcodeSection) {
+			headcodeSection.style.display = "none";
+		}
+
+		if (trainNameSection) trainNameSection.style.display = "none";
+	} else if (isGroup) {
+		function summaryList(arr) {
+			return arr.length ? arr.join(", ") : "-";
+		}
+		const destList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[0] : null).filter(v => v && v !== "Unknown");
+		const classList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[1] : null).filter(v => v && v !== "Unknown");
+		const headcodeList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[2] : null).filter(v => v && v !== "----" && v !== "");
+		const destSummary = summaryList(destList);
+		const classSummary = summaryList(classList);
+		const headcodeSummary = summaryList(headcodeList);
+
+		if (destinationSection) {
+			const destDiv = destinationSection.querySelector("div");
+			if (destDiv) destDiv.textContent = destSummary;
+			destinationSection.style.display = "flex";
+		}
+		if (trainClassSection) {
+			const classDiv = trainClassSection.querySelector("div");
+			if (classDiv) classDiv.textContent = classSummary;
+			trainClassSection.style.display = "flex";
+		}
+		if (headcodeSection) {
+			const headDiv = headcodeSection.querySelector("div");
+			if (headDiv) headDiv.textContent = headcodeSummary;
+			headcodeSection.style.display = "flex";
+		}
+		if (trainNameSection) trainNameSection.style.display = "none";
+	} else {
+		[destinationSection, trainNameSection, headcodeSection, trainClassSection].forEach((section) => {
+			if (section) section.style.display = "none";
+		});
+	}
+
+	const playerSection = elements.tooltip.querySelector("#player");
+	if (playerSection) playerSection.style.display = "flex";
+
+	const serverSection = elements.tooltip.querySelector("#server");
+	if (serverSection && state.currentServer === "all") {
+		const serverDiv = serverSection.querySelector("div");
+		if (serverDiv) {
+			let serverName = "Unknown";
+			// For group, just show the first's server
+			const firstPlayer = group[0];
+			for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
+				if (serverInfo.players && serverInfo.players.includes(firstPlayer)) {
+					serverName = jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
+					break;
+				}
 			}
-			
-			const destList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[0] : null).filter(v => v && v !== "Unknown");
-			const classList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[1] : null).filter(v => v && v !== "Unknown");
-			const headcodeList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[2] : null).filter(v => v && v !== "----" && v !== "");
-			const destSummary = summaryList(destList);
-	        const classSummary = summaryList(classList);
-		    const headcodeSummary = summaryList(headcodeList);
+			serverDiv.textContent = serverName;
+		}
+		serverSection.style.display = "flex";
+	} else if (serverSection) {
+		serverSection.style.display = "none";
+	}
 
-	        if (destinationSection) {
-		        const destDiv = destinationSection.querySelector("div");
-		        if (destDiv) destDiv.textContent = destSummary;
-		        destinationSection.style.display = "flex";
-	        }
-	        if (trainClassSection) {
-		        const classDiv = trainClassSection.querySelector("div");
-		        if (classDiv) classDiv.textContent = classSummary;
-		        trainClassSection.style.display = "flex";
-	        }
-	        if (headcodeSection) {
-		        const headDiv = headcodeSection.querySelector("div");
-		        if (headDiv) headDiv.textContent = headcodeSummary;
-		        headcodeSection.style.display = "flex";
-	        }
-	        if (trainNameSection) trainNameSection.style.display = "none";
-        } else {
-	        [destinationSection, trainNameSection, headcodeSection, trainClassSection].forEach((section) => {
-		        if (section) section.style.display = "none";
-	        });
-        }
-
-        const playerSection = elements.tooltip.querySelector("#player");
-        if (playerSection) playerSection.style.display = "flex";
-
-        const serverSection = elements.tooltip.querySelector("#server");
-        if (serverSection && state.currentServer === "all") {
-	        const serverDiv = serverSection.querySelector("div");
-	        if (serverDiv) {
-		        let serverName = "Unknown";
-		        // For group, just show the first's server
-		        const firstPlayer = group[0];
-		        for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
-			        if (serverInfo.players && serverInfo.players.includes(firstPlayer)) {
-				        serverName = jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
-				        break;
-			        }
-		        }
-		        serverDiv.textContent = serverName;
-	        }
-	        serverSection.style.display = "flex";
-        } else if (serverSection) {
-	        serverSection.style.display = "none";
-        }
-
-        // Position tooltip at the group spot
-        const worldX = group[0].position?.x ?? 0;
-        const worldY = group[0].position?.y ?? 0;
-        const baseCanvasPos = worldToCanvas(worldX, worldY);
-        const transform = context.getTransform();
-       	const screenX = baseCanvasPos.x * transform.a + baseCanvasPos.y * transform.c + transform.e;
-       	const screenY = baseCanvasPos.x * transform.b + baseCanvasPos.y * transform.d + transform.f;
-       	const canvasRect = canvas.getBoundingClientRect();
-       	const tooltipX = canvasRect.left + screenX;
-       	const tooltipY = canvasRect.top + screenY;
-       	let finalX = tooltipX + 15;
-       	let finalY = tooltipY - 40;
-       	elements.tooltip.classList.remove("hidden");
-       	elements.tooltip.style.visibility = "hidden";
-       	const tooltipRect = elements.tooltip.getBoundingClientRect();
-       	// Boundary checks
-       	if (finalX + tooltipRect.width > window.innerWidth) {
-	   	    finalX = tooltipX - tooltipRect.width - 15;
-       	}
-       	if (finalY < 0) {
-	   	    finalY = tooltipY + 20;
-       	}
-       	if (finalY + tooltipRect.height > window.innerHeight) {
-	   	    finalY = tooltipY - tooltipRect.height - 20;
-       	}
-       	if (finalX < 0) {
-	   	    finalX = tooltipX + 15;
-       	}
-       	elements.tooltip.style.left = `${finalX}px`;
-       	elements.tooltip.style.top = `${finalY}px`;
-       	elements.tooltip.style.visibility = "visible";
+	// Position tooltip at the group spot
+	const worldX = group[0].position?.x ?? 0;
+	const worldY = group[0].position?.y ?? 0;
+	const baseCanvasPos = worldToCanvas(worldX, worldY);
+	const transform = context.getTransform();
+	const screenX = baseCanvasPos.x * transform.a + baseCanvasPos.y * transform.c + transform.e;
+	const screenY = baseCanvasPos.x * transform.b + baseCanvasPos.y * transform.d + transform.f;
+	const canvasRect = canvas.getBoundingClientRect();
+	const tooltipX = canvasRect.left + screenX;
+	const tooltipY = canvasRect.top + screenY;
+	let finalX = tooltipX + 15;
+	let finalY = tooltipY - 40;
+	elements.tooltip.classList.remove("hidden");
+	elements.tooltip.style.visibility = "hidden";
+	const tooltipRect = elements.tooltip.getBoundingClientRect();
+	// Boundary checks
+	if (finalX + tooltipRect.width > window.innerWidth) {
+		finalX = tooltipX - tooltipRect.width - 15;
+	}
+	if (finalY < 0) {
+		finalY = tooltipY + 20;
+	}
+	if (finalY + tooltipRect.height > window.innerHeight) {
+		finalY = tooltipY - tooltipRect.height - 20;
+	}
+	if (finalX < 0) {
+		finalX = tooltipX + 15;
+	}
+	elements.tooltip.style.left = `${finalX}px`;
+	elements.tooltip.style.top = `${finalY}px`;
+	elements.tooltip.style.visibility = "visible";
 };
 
 let resizeTimeout = null;
@@ -907,68 +852,34 @@ const drawScene = () => {
         }
     });
 
-    if (state.currentScale > 300) return;
-    const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
-    Object.entries(AREA_MARKERS).forEach(([name, { x, y }]) => {
-        const position = worldToCanvas(x, y);
-        context.font = `${markerFontSize}px Inter`;
-
-        const metrics = context.measureText(name);
-        const textWidth = metrics.width;
-        const ascent = metrics.actualBoundingBoxAscent || markerFontSize * 0.8;
-        const descent = metrics.actualBoundingBoxDescent || markerFontSize * 0.2;
-        const textHeight = ascent + descent;
-
-        const padX = markerFontSize * 0.6;
-        const padY = markerFontSize * 0.4;
-        const boxWidth = textWidth + padX * 2;
-        const boxHeight = textHeight + padY * 2;
-
-        const boxX = position.x - boxWidth / 2;
-        const boxY = position.y - boxHeight / 2;
-
-        const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
-        context.fillStyle = "#00000078";
-        context.strokeStyle = "transparent";
-        context.lineWidth = Math.max(0.5 * (markerFontSize / 10), 0.4);
-
-        drawRoundedRectangle(context, boxX, boxY, boxWidth, boxHeight, radius);
-        context.fill();
-        context.stroke();
-
-        context.fillStyle = "#fff";
-        context.fillText(name, position.x - textWidth / 2, boxY + padY + ascent);
+	if (state.currentScale > 300) return;
+	const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
+	Object.entries(AREA_MARKERS).forEach(([name, { x, y }]) => {
+		const pos = worldToCanvas(x, y);
+		context.font = `${markerFontSize}px Inter`;
+		const metrics = context.measureText(name);
+		const textWidth = metrics.width;
+		const ascent = metrics.actualBoundingBoxAscent || markerFontSize * 0.8;
+		const descent = metrics.actualBoundingBoxDescent || markerFontSize * 0.2;
+		const textHeight = ascent + descent;
+		const padX = markerFontSize * 0.6;
+		const padY = markerFontSize * 0.4;
+		const boxWidth = textWidth + padX * 2;
+		const boxHeight = textHeight + padY * 2;
+		// Center the label above the marker
+		const boxX = pos.x - boxWidth / 2;
+		const boxY = pos.y - boxHeight - 6; // 6px gap above marker
+		const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
+		context.fillStyle = "#00000078";
+		context.strokeStyle = "transparent";
+		context.lineWidth = Math.max(0.5 * (markerFontSize / 10), 0.4);
+		drawRoundedRectangle(context, boxX, boxY, boxWidth, boxHeight, radius);
+		context.fill();
+		context.stroke();
+		context.fillStyle = "#fff";
+		context.textAlign = "center";
+		context.fillText(name, pos.x, boxY + padY + ascent);
 	});
-
-    if (state.currentScale > 300) return;
-    const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
-		Object.entries(AREA_MARKERS).forEach(([name, { x, y }]) => {
-			const pos = worldToCanvas(x, y);
-			context.font = `${markerFontSize}px Inter`;
-			const metrics = context.measureText(name);
-			const textWidth = metrics.width;
-			const ascent = metrics.actualBoundingBoxAscent || markerFontSize * 0.8;
-			const descent = metrics.actualBoundingBoxDescent || markerFontSize * 0.2;
-			const textHeight = ascent + descent;
-			const padX = markerFontSize * 0.6;
-			const padY = markerFontSize * 0.4;
-			const boxWidth = textWidth + padX * 2;
-			const boxHeight = textHeight + padY * 2;
-
-			// Center the label above the marker
-			const boxX = pos.x - boxWidth / 2;
-			const boxY = pos.y - boxHeight - 6; // 6px gap above marker
-			const radius = Math.min(boxHeight / 2, markerFontSize * 0.5);
-			context.fillStyle = "#00000078";
-			context.strokeStyle = "transparent";
-			context.lineWidth = Math.max(0.5 * (markerFontSize / 10), 0.4);
-			drawRoundedRect(context, boxX, boxY, boxWidth, boxHeight, radius);
-			context.fill();
-			context.stroke();
-			context.fillStyle = "#fff";
-			context.textAlign = "center";
-			context.fillText(name, pos.x, boxY + padY + ascent);
-		});
 };
 
 const loadMapImages = () => {
