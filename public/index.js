@@ -145,10 +145,10 @@ const state = new AppState();
 
 // Utility Functions
 const getCanvasCoordinates = (event) => {
-	const rect = canvas.getBoundingClientRect();
+	const rectangle = canvas.getBoundingClientRect();
 	return {
-		x: event.clientX - rect.left,
-		y: event.clientY - rect.top,
+		x: event.clientX - rectangle.left,
+		y: event.clientY - rectangle.top,
 	};
 };
 
@@ -311,7 +311,7 @@ const updateTooltip = (playerOrGroup, mouseX, mouseY) => {
 	if (!isGroup && group[0].trainData && Array.isArray(group[0].trainData)) {
 		const [destination, trainClass, headcode, trainType] = group[0].trainData;
 
-		if (destination && destination !== "Unknown" && destinationSection) {
+		if (destination && destination !== "Unknown" && destination.trim() !== "" && destinationSection) {
 			const destinationDiv = destinationSection.querySelector("div");
 			if (destinationDiv) destinationDiv.textContent = destination;
 			destinationSection.style.display = "flex";
@@ -319,7 +319,7 @@ const updateTooltip = (playerOrGroup, mouseX, mouseY) => {
 			destinationSection.style.display = "none";
 		}
 
-		if (trainClass && trainClass !== "Unknown" && trainClassSection) {
+		if (trainClass && trainClass !== "Unknown" && trainClass.trim() !== "" && trainClassSection) {
 			const classDiv = trainClassSection.querySelector("div");
 			if (classDiv) classDiv.textContent = trainClass;
 			trainClassSection.style.display = "flex";
@@ -330,7 +330,7 @@ const updateTooltip = (playerOrGroup, mouseX, mouseY) => {
 		if (
 			headcode &&
 			headcode !== "----" &&
-			headcode !== "" &&
+			headcode.trim() !== "" &&
 			headcodeSection
 		) {
 			const headDiv = headcodeSection.querySelector("div");
@@ -343,29 +343,41 @@ const updateTooltip = (playerOrGroup, mouseX, mouseY) => {
 		if (trainNameSection) trainNameSection.style.display = "none";
 	} else if (isGroup) {
 		function summaryList(arr) {
-			return arr.length ? arr.join(", ") : "-";
+			return arr.length ? arr.join(", ") : "";
 		}
-		const destList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[0] : null).filter(v => v && v !== "Unknown");
-		const classList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[1] : null).filter(v => v && v !== "Unknown");
-		const headcodeList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[2] : null).filter(v => v && v !== "----" && v !== "");
+		const destList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[0] : null).filter(v => v && v !== "Unknown" && v.trim() !== "");
+		const classList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[1] : null).filter(v => v && v !== "Unknown" && v.trim() !== "");
+		const headcodeList = group.map(p => (p.trainData && Array.isArray(p.trainData)) ? p.trainData[2] : null).filter(v => v && v !== "----" && v.trim() !== "");
 		const destSummary = summaryList(destList);
 		const classSummary = summaryList(classList);
 		const headcodeSummary = summaryList(headcodeList);
 
 		if (destinationSection) {
 			const destDiv = destinationSection.querySelector("div");
-			if (destDiv) destDiv.textContent = destSummary;
-			destinationSection.style.display = "flex";
+			if (destSummary && destDiv) {
+				destDiv.textContent = destSummary;
+				destinationSection.style.display = "flex";
+			} else {
+				destinationSection.style.display = "none";
+			}
 		}
 		if (trainClassSection) {
 			const classDiv = trainClassSection.querySelector("div");
-			if (classDiv) classDiv.textContent = classSummary;
-			trainClassSection.style.display = "flex";
+			if (classSummary && classDiv) {
+				classDiv.textContent = classSummary;
+				trainClassSection.style.display = "flex";
+			} else {
+				trainClassSection.style.display = "none";
+			}
 		}
 		if (headcodeSection) {
 			const headDiv = headcodeSection.querySelector("div");
-			if (headDiv) headDiv.textContent = headcodeSummary;
-			headcodeSection.style.display = "flex";
+			if (headcodeSummary && headDiv) {
+				headDiv.textContent = headcodeSummary;
+				headcodeSection.style.display = "flex";
+			} else {
+				headcodeSection.style.display = "none";
+			}
 		}
 		if (trainNameSection) trainNameSection.style.display = "none";
 	} else {
@@ -693,44 +705,42 @@ const updateServerList = (data = null) => {
 
 // --- Player Grouping Helper ---
 function groupPlayers(players, groupDistance = 2) {
-    // groupDistance is in canvas pixels (smaller for tighter grouping)
-    const groups = [];
-    const used = new Set();
-    for (let i = 0; i < players.length; i++) {
-	    if (used.has(i)) continue;
-	    const group = [players[i]];
-	    const posA = worldToCanvas(players[i].position?.x ?? 0, players[i].position?.y ?? 0);
-	    for (let j = i + 1; j < players.length; j++) {
-		    if (used.has(j)) continue;
-		    const posB = worldToCanvas(players[j].position?.x ?? 0, players[j].position?.y ?? 0);
-		    const dist = Math.hypot(posA.x - posB.x, posA.y - posB.y);
-		    if (dist < groupDistance) {
-			    group.push(players[j]);
-			    used.add(j);
-		    }
-	    }
-	    used.add(i);
-	    groups.push(group);
-    }
-    return groups;
+// groupDistance is in canvas pixels (smaller for tighter grouping)
+	const groups = [];
+	const usedIndexes = new Set();
+	for (let index = 0; index < players.length; index++) {
+		if (usedIndexes.has(index)) continue;
+		const group = [players[index]];
+		const positionA = worldToCanvas(players[index].position?.x ?? 0, players[index].position?.y ?? 0);
+		for (let j = index + 1; j < players.length; j++) {
+			if (usedIndexes.has(j)) continue;
+			const positionB = worldToCanvas(players[j].position?.x ?? 0, players[j].position?.y ?? 0);
+			const distance = Math.hypot(positionA.x - positionB.x, positionA.y - positionB.y);
+			if (distance < groupDistance) {
+				group.push(players[j]);
+				usedIndexes.add(j);
+			}
+		}
+		usedIndexes.add(index);
+		groups.push(group);
+	}
+	return groups;
 }
 
 // --- Persistent group color map for session ---
 const persistentGroupColorMap = new Map();
 function getPersistentGroupColor(group) {
-	// Use sorted usernames as key for group
-	const key = group.map(p => p.username ?? '').sort().join(',');
-	if (persistentGroupColorMap.has(key)) return persistentGroupColorMap.get(key);
-	// Pick a random color from COLORS not already in use for visible groups
+	const groupKey = group.map(player => player.username ?? '').sort().join(',');
+	if (persistentGroupColorMap.has(groupKey)) return persistentGroupColorMap.get(groupKey);
 	const usedColors = new Set(Array.from(persistentGroupColorMap.values()));
-	const availableColors = COLORS.filter(c => !usedColors.has(c));
+	const availableColors = COLORS.filter(color => !usedColors.has(color));
 	let color;
 	if (availableColors.length > 0) {
 		color = availableColors[Math.floor(Math.random() * availableColors.length)];
 	} else {
 		color = COLORS[Math.floor(Math.random() * COLORS.length)];
 	}
-	persistentGroupColorMap.set(key, color);
+	persistentGroupColorMap.set(groupKey, color);
 	return color;
 }
 
@@ -758,36 +768,35 @@ const drawScene = () => {
     const offsetX = (canvas.width - scaledMapWidth) / 2;
     const offsetY = (canvas.height - scaledMapHeight) / 2;
 
-    const chunkWidth = MAP_CONFIG.totalWidth / MAP_CONFIG.cols;
+    const chunkWidth = MAP_CONFIG.totalWidth / MAP_CONFIG.columns;
     const chunkHeight = MAP_CONFIG.totalHeight / MAP_CONFIG.rows;
     const scaledChunkWidth = chunkWidth * scaleFactor;
     const scaledChunkHeight = chunkHeight * scaleFactor;
 
     context.imageSmoothingEnabled = false;
-    // Draw map tiles
     for (let row = 0; row < MAP_CONFIG.rows; row++) {
-	    for (let col = 0; col < MAP_CONFIG.cols; col++) {
-		    const img = state.mapImages[row]?.[col];
-		    if (img?.complete) {
-			    const destX = offsetX + col * scaledChunkWidth;
-			    const destY = offsetY + row * scaledChunkHeight;
+    	for (let column = 0; column < MAP_CONFIG.columns; column++) {
+    		const image = state.mapImages[row]?.[column];
+    		if (image?.complete) {
+    			const destinationX = offsetX + column * scaledChunkWidth;
+    			const destinationY = offsetY + row * scaledChunkHeight;
 
-			    const overlap = Math.max(0.5, 2 / state.currentScale);
-			    const drawWidth = scaledChunkWidth + (col < MAP_CONFIG.cols - 1 ? overlap : 0);
-			    const drawHeight = scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
-			    context.drawImage(
-				    img,
-				    0,
-				    0,
-				    img.width,
-				    img.height,
-				    destX,
-				    destY,
-				    drawWidth,
-				    drawHeight,
-			    );
-		    }
-	    }
+    			const overlap = Math.max(0.5, 2 / state.currentScale);
+    			const drawWidth = scaledChunkWidth + (column < MAP_CONFIG.columns - 1 ? overlap : 0);
+    			const drawHeight = scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
+    			context.drawImage(
+    				image,
+    				0,
+    				0,
+    				image.width,
+    				image.height,
+    				destinationX,
+    				destinationY,
+    				drawWidth,
+    				drawHeight,
+    			);
+    		}
+    	}
     }
     context.imageSmoothingEnabled = true;
 
@@ -808,13 +817,8 @@ const drawScene = () => {
 		const name = group[0].username ?? "Unknown";
 		const canvasPos = worldToCanvas(worldX, worldY);
 		const isHovered = Array.isArray(state.hoveredPlayer) ? state.hoveredPlayer.includes(group[0]) : (state.hoveredPlayer?.username === name && group.length === 1);
-		// Grouped spot is slightly bigger than single spot
 		const baseRadius = group.length > 1 ? 3 : (isHovered ? 2.5 : 2);
 		const radius = baseRadius * dotScaleFactor;
-
-
-		// Use a blended color for groups, or just the first player's color
-		// Assign a random color from COLORS for each group dot (with >1 player)
 		let fillColor;
 		if (group.length > 1) {
 			fillColor = getPersistentGroupColor(group);
@@ -823,33 +827,26 @@ const drawScene = () => {
 		}
 		context.fillStyle = fillColor;
 		context.beginPath();
-		context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
+		context.arc(canvasPos.x, canvasPos.y, radius, 0, Math.PI * 2);
 		context.fill();
-
-		// Draw border
 		context.strokeStyle = group.length > 1 ? "#fff" : (isHovered ? "white" : "black");
 		context.lineWidth = Math.max((group.length > 1 ? 0.7 : (isHovered ? 0.7 : 0.4)) * scaleFactor, 0.18);
 		context.stroke();
-
-	   // Draw group count if > 1
-        if (group.length > 1) {
-            context.fillStyle = "#fff";
-            // Dynamically scale font size to fit the spot
-            let fontSize = radius * 1.7;
-            context.font = `${fontSize}px Inter`;
-            let text = group.length.toString();
-            let metrics = context.measureText(text);
-            // Shrink font if text is too wide for the spot
-            while (metrics.width > radius * 1.6 && fontSize > 6) {
-                fontSize -= 1;
-                context.font = `${fontSize}px Inter`;
-                metrics = context.measureText(text);
-            }
-            context.textAlign = "center";
-            context.textBaseline = "middle";
-            // Center the number exactly in the spot
-            context.fillText(text, canvasPos.x, canvasPos.y);
-        }
+		if (group.length > 1) {
+			let fontSize = radius * 1.7;
+			context.font = `${fontSize}px Inter`;
+			let groupCountText = group.length.toString();
+			let metrics = context.measureText(groupCountText);
+			while (metrics.width > radius * 1.6 && fontSize > 6) {
+				fontSize -= 1;
+				context.font = `${fontSize}px Inter`;
+				metrics = context.measureText(groupCountText);
+			}
+			context.textAlign = "center";
+			context.textBaseline = "middle";
+			context.fillStyle = "#fff";
+			context.fillText(groupCountText, canvasPos.x, canvasPos.y);
+		}
     });
 
 	if (state.currentScale > 300) return;
@@ -883,30 +880,30 @@ const drawScene = () => {
 };
 
 const loadMapImages = () => {
-	for (let row = 0; row < MAP_CONFIG.rows; row++) {
-		state.mapImages[row] = [];
-		for (let column = 0; column < MAP_CONFIG.columns; column++) {
-			const image = new Image();
-			image.src = `/images/row-${row + 1}-column-${column + 1}.png`;
+    for (let row = 0; row < MAP_CONFIG.rows; row++) {
+    	state.mapImages[row] = [];
+    	for (let column = 0; column < MAP_CONFIG.columns; column++) {
+    		const image = new Image();
+    		image.src = `/images/row-${row + 1}-column-${column + 1}.png`;
 
-			image.onload = () => {
-				state.loadedImages++;
-				if (state.loadedImages === 1) {
-					initializeMap();
-				} else {
-					drawScene();
-				}
-			};
+    		image.onload = () => {
+    			state.loadedImages++;
+    			if (state.loadedImages === 1) {
+    				initializeMap();
+    			} else {
+    				drawScene();
+    			}
+    		};
 
-			image.onerror = () => {
-				console.error(`Failed to load image: ${image.src}`);
-				state.loadedImages++;
-				drawScene();
-			};
+    		image.onerror = () => {
+    			console.error(`Failed to load image: ${image.src}`);
+    			state.loadedImages++;
+    			drawScene();
+    		};
 
-			state.mapImages[row][column] = image;
-		}
-	}
+    		state.mapImages[row][column] = image;
+    	}
+    }
 };
 
 const initializeMap = () => {
