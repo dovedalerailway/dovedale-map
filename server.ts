@@ -13,6 +13,7 @@ const playerSchema = z.strictObject({
 		y: z.int(),
 	}),
 });
+
 const requestSchema = z.strictObject({
 	jobId: z.string(),
 	players: z.array(playerSchema),
@@ -24,8 +25,7 @@ const app = new Hono();
 const PORT = process.env.PORT || 3000;
 const ROBLOX_TOKEN = process.env.ROBLOX_OTHER_KEY;
 
-if (!ROBLOX_TOKEN) throw new Error(`Token environment variable is missing`);
-
+if (!ROBLOX_TOKEN && process.env.NODE_ENV === "production") throw new Error(`Token environment variable is missing`);
 app.use("*", serveStatic({ root: "./public" }));
 
 let webSockets: WSContext<any>[] = [];
@@ -34,46 +34,88 @@ app.get("/status", (context) => {
 	return context.text("200 OK");
 });
 
-app.get(
+if (process.env.NODE_ENV == "development"){
+	// Forward from production server
+	app.get(
 	"/ws",
-	upgradeWebSocket((context) => {
+	upgradeWebSocket((_ctx) => {
 		return {
-			onOpen: (_event, webSocket) => {
-				webSockets.push(webSocket);
-			},
-			onClose: (_event, webSocket) => {
-				const index = webSockets.indexOf(webSocket);
-				if (index > -1) {
-					webSockets.splice(index, 1);
-				}
-			},
+		onOpen: (_event, client) => {
+			console.log("Client connected");
+			webSockets.push(client);
+			const upstream = new WebSocket("wss://map.dovedale.wiki/ws");
+
+			upstream.onopen = () => {
+			console.log("Connected to production server");
+			};
+
+			upstream.onmessage = (event) => {
+			if (client.readyState === WebSocket.OPEN) {
+				client.send(event.data);
+			}
+			};
+
+			client.onmessage = (event) => {
+			if (upstream.readyState === WebSocket.OPEN) {
+				upstream.send(event.data);
+			}
+			};
+
+			client.onclose = () => {
+			upstream.close();
+			const idx = webSockets.indexOf(client);
+			if (idx > -1) webSockets.splice(idx, 1);
+			};
+		},
 		};
 	}),
-);
+	);
 
+}
+else if (process.env.NODE_ENV == "production"){
+	app.get(
+		"/ws",
+		upgradeWebSocket((context) => {
+			return {
+				onOpen: (_event, webSocket) => {
+					webSockets.push(webSocket);
+				},
+				onClose: (_event, webSocket) => {
+					const index = webSockets.indexOf(webSocket);
+					if (index > -1) {
+						webSockets.splice(index, 1);
+					}
+				},
+			};
+		}),
+	);
+}
+
+if (process.env.NODE_ENV === "production"){
 app.post("/positions", async (context) => {
-	const result = requestSchema.safeParse(await context.req.json());
+		const result = requestSchema.safeParse(await context.req.json());
 
-	if (!result.success) {
-		return context.json({ success: false, errors: result.error.issues }, 400);
-	}
+		if (!result.success) {
+			return context.json({ success: false, errors: result.error.issues }, 400);
+		}
 
-	const { token: bodyToken, ...dataToSend } = result.data;
-	// once all Dovedale servers migrate to version using headers, body token support will be removed
-	const authorizationHeader = context.req.header("Authorization");
-	if (
-		authorizationHeader !== `Bearer ${ROBLOX_TOKEN}` &&
-		bodyToken !== ROBLOX_TOKEN
-	) {
-		return context.text("Invalid token", 401);
-	}
+		const { token: bodyToken, ...dataToSend } = result.data;
+		// once all Dovedale servers migrate to version using headers, body token support will be removed
+		const authorizationHeader = context.req.header("Authorization");
+		if (
+			authorizationHeader !== `Bearer ${ROBLOX_TOKEN}` &&
+			bodyToken !== ROBLOX_TOKEN
+		) {
+			return context.text("Invalid token", 401);
+		}
 
-	webSockets.forEach((webSocket) => {
-		webSocket.send(JSON.stringify(dataToSend));
-	});
+		webSockets.forEach((webSocket) => {
+			webSocket.send(JSON.stringify(dataToSend));
+		});
 
-	return context.json({ success: true });
+		return context.json({ success: true });
 });
+}
 
 export default {
 	fetch: app.fetch,

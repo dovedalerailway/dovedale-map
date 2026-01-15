@@ -1,7 +1,7 @@
 {
 	"scripts": {
-		"start": "bun run server.js",
-		"dev": "bun run --watch server.js"
+		"start": "NODE_ENV=production bun run server.js",
+		"dev": "NODE_ENV=development bun run --watch server.js"
 	},
 	"dependencies": {
 		"hono": "^4.11.0",
