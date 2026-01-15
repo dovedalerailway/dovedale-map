@@ -38,7 +38,7 @@ if (process.env.NODE_ENV == "development"){
 	// Forward from production server
 	app.get(
 	"/ws",
-	upgradeWebSocket((_ctx) => {
+	upgradeWebSocket((context) => {
 		return {
 		onOpen: (_event, client) => {
 			console.log("Client connected");
