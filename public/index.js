@@ -10,7 +10,7 @@ const WORLD_CENTER = {
 	y: (WORLD_BOUNDS.TOP_LEFT.y + WORLD_BOUNDS.BOTTOM_RIGHT.y) / 2,
 };
 
-const STALE_SERVER_TIMEOUT = 30000;
+const STALE_SERVER_TIMEOUT = 30_000;
 
 const MAP_CONFIG = {
 	rows: 1,
@@ -309,7 +309,7 @@ const updateTooltip = (player) => {
 	const trainClassSection = elements.tooltip.querySelector("#train-class");
 
 	if (player.trainData && Array.isArray(player.trainData)) {
-		const [destination, trainClass, headcode, trainType] = player.trainData;
+		const { destination, trainClass, headcode, trainType } = player.trainData;
 
 		if (destination && destination !== "Unknown" && destinationSection) {
 			const destinationDiv = destinationSection.querySelector("div");
@@ -481,10 +481,7 @@ const createWebSocket = () => {
 		state.ws = null;
 	}
 
-	state.ws = new WebSocket(
-		(location.protocol == "http:" ? "ws://" : "wss://") +
-			`${window.location.host}/ws`,
-	);
+	state.ws = new WebSocket((location.protocol == "http:" ? "ws://" : "wss://") + `${window.location.host}/api/ws`);
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");

@@ -19,11 +19,19 @@ You can connect to the WebSocket at `https://map.dovedale.wiki/ws` and you will 
 	"players": [
 		{
 			"username": "cl0vermead0w",
+			"userId": 92133828,
 			"position": { "y": -1193, "x": 11813 }
 		},
 		{
 			"username": "MrTortoise_guy",
-			"trainData": ["Gleethrop End", "Class 150/2", "2G81", "Passenger"],
+			"userId": 361635687,
+			// This was changed from an array in 2.0.1h7
+			"trainData": {
+				"destination": "Gleethrop End",
+				"trainClass": "Class 150/2",
+				"headcode": "2G81",
+				"trainType": "Passenger"
+			},
 			"position": { "y": -1099, "x": 3173 }
 		}
 	]
