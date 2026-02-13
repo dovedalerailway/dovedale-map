@@ -61,7 +61,7 @@ if (process.env.NODE_ENV == "development"){
 		onOpen: (_event, client) => {
 			console.log("Client connected");
 			webSockets.push(client);
-			const upstream = new WebSocket("wss://map.dovedale.wiki/ws");
+			const upstream = new WebSocket("wss://map.dovedale.wiki/api/ws");
 
 			upstream.onopen = () => {
 			console.log("Connected to production server");
@@ -88,7 +88,7 @@ if (process.env.NODE_ENV == "development"){
 		};
 	}),
 	);
-
+}
 app.get("/api/servers/:jobId/players", async (context) => {
 	const authorizationHeader = context.req.header("Authorization");
 	if (authorizationHeader !== `Bearer ${ROBLOX_TOKEN}`) {
