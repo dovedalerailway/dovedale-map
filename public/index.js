@@ -308,7 +308,7 @@ const updateTooltip = (player) => {
 	const headcodeSection = elements.tooltip.querySelector("#headcode");
 	const trainClassSection = elements.tooltip.querySelector("#train-class");
 
-	if (player.trainData && Array.isArray(player.trainData)) {
+	if (player.trainData && Object.keys(player.trainData).length > 0) {
 		const { destination, trainClass, headcode, trainType } = player.trainData;
 
 		if (destination && destination !== "Unknown" && destinationSection) {
