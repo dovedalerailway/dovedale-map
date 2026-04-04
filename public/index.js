@@ -109,6 +109,7 @@ const elements = {
 	serverSelect: document.getElementById("servers"),
 	connectionPopup: document.getElementById("connectionPopup"),
 	reconnectBtn: document.getElementById("reconnectBtn"),
+	joinBtn: document.getElementById("joinBtn"),
 };
 
 // Application State
@@ -327,12 +328,7 @@ const updateTooltip = (player) => {
 			trainClassSection.style.display = "none";
 		}
 
-		if (
-			headcode &&
-			headcode !== "----" &&
-			headcode !== "" &&
-			headcodeSection
-		) {
+		if (headcode && headcode !== "----" && headcode !== "" && headcodeSection) {
 			const headDiv = headcodeSection.querySelector("div");
 			if (headDiv) headDiv.textContent = headcode;
 			headcodeSection.style.display = "flex";
@@ -480,8 +476,15 @@ const createWebSocket = () => {
 		state.ws.close();
 		state.ws = null;
 	}
-
-	state.ws = new WebSocket((location.protocol == "http:" ? "ws://" : "wss://") + `${window.location.host}/api/ws`);
+	// if were in an dev env use the prod endpoint
+	if (window.location.host.split(":")[0] === "localhost") {
+		state.ws = new WebSocket(`wss://map.dovedale.wiki/api/ws`);
+	} else {
+		state.ws = new WebSocket(
+			(location.protocol == "http:" ? "ws://" : "wss://") +
+				`${window.location.host}/api/ws`,
+		);
+	}
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
@@ -719,8 +722,7 @@ const drawScene = () => {
 
 				const overlap = Math.max(0.5, 2 / state.currentScale);
 				const drawWidth =
-					scaledChunkWidth +
-					(column < MAP_CONFIG.columns - 1 ? overlap : 0);
+					scaledChunkWidth + (column < MAP_CONFIG.columns - 1 ? overlap : 0);
 				const drawHeight =
 					scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
 
@@ -1001,6 +1003,16 @@ const start = () => {
 	elements.serverSelect.innerHTML =
 		'<option value="all">All Servers (0 players)</option>';
 	createWebSocket();
+
+	elements.serverSelect.onchange = () => {
+		if (elements.serverSelect.selectedOptions[0].value === "all") {
+			elements.joinBtn.href = "roblox://experiences/start?placeId=12018816388";
+		} else {
+			elements.joinBtn.href =
+				"roblox://experiences/start?placeId=12018816388&gameInstanceId=" +
+				elements.serverSelect.selectedOptions[0].value;
+		}
+	};
 };
 
 start();
