@@ -977,6 +977,14 @@ const handleTouchEvents = () => {
 elements.serverSelect.addEventListener("change", () => {
 	state.currentServer = elements.serverSelect.value;
 	drawScene();
+
+	if (elements.serverSelect.value === "all") {
+		elements.joinBtn.href = "roblox://experiences/start?placeId=12018816388";
+	} else {
+		elements.joinBtn.href =
+			"roblox://experiences/start?placeId=12018816388&gameInstanceId=" +
+			elements.serverSelect.value;
+	}
 });
 
 elements.reconnectBtn.addEventListener("click", () => {
@@ -1003,16 +1011,6 @@ const start = () => {
 	elements.serverSelect.innerHTML =
 		'<option value="all">All Servers (0 players)</option>';
 	createWebSocket();
-
-	elements.serverSelect.addEventListener("change", () => {
-		if (elements.serverSelect.value === "all") {
-			elements.joinBtn.href = "roblox://experiences/start?placeId=12018816388";
-		} else {
-			elements.joinBtn.href =
-				"roblox://experiences/start?placeId=12018816388&gameInstanceId=" +
-				elements.serverSelect.value;
-		}
-	});
 };
 
 start();
