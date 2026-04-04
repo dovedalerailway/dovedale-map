@@ -670,6 +670,7 @@ const updateServerList = (data = null) => {
 
 	if (selectedValue !== "all" && !currentServers.includes(selectedValue)) {
 		elements.serverSelect.value = "all";
+		elements.joinBtn.href = "roblox://experiences/start?placeId=12018816388";
 		state.currentServer = "all";
 	} else {
 		elements.serverSelect.value = selectedValue;
