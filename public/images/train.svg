@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="12mm"
+   height="4mm"
+   viewBox="0 0 12 5.5"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1">
+
+
+
+   <path 
+      id = "mainBody"
+      style="fill:#d45500;stroke:none;" 
+      d = "M0.5 0.5 l10 0 l1 2 l-1 2 l-10 0 Z"/>
+   <path 
+      id = "hood"
+      style="opacity:0.20;fill:#000000;stroke:none;" 
+      d = "M8.5 0.5 l2 0 l1 2 l-1 2 l-2 0 l1,-2Z"/>
+   <path
+       id="window" 
+       style="fill:none;stroke:#000080;stroke-width:1;"
+       d="M8.5 0.5 l 1,2 l -1,2"/>
+   <path 
+      id = "outline"
+      style="fill:none;stroke:#000000;stroke-width:1;" 
+      d = "M0.5 0.5 l10 0 l1 2 l-1 2 l-10 0 Z"/>
+  </g>
+</svg>

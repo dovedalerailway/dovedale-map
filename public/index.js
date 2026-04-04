@@ -129,6 +129,7 @@ class AppState {
 		this.loadedImages = 0;
 		this.totalImages = MAP_CONFIG.rows * MAP_CONFIG.columns;
 		this.staleCheckInterval = null;
+		this.previousPlayerPosition = {};
 	}
 
 	getAllPlayers() {
@@ -755,6 +756,49 @@ const drawScene = () => {
 		const baseRadius = isHovered ? 2.5 : 2;
 		const radius = baseRadius * dotScaleFactor;
 
+		if (player.trainData) {
+			const lastPlayerPosition = state.previousPlayerPosition[player.userId]?.position ?? { x: 0, y: 0 };
+
+			const dist = (player.position.x - lastPlayerPosition.x) ** 2 + (player.position.y - lastPlayerPosition.y) ** 2;
+			let markerAngle = Math.atan2((player.position.y - lastPlayerPosition.y), (player.position.x - lastPlayerPosition.x));
+
+			// take care of "disco trains" require minimum distance to change angle
+			if (dist > 1) {
+				if (state.previousPlayerPosition[player.userId]) {
+					state.previousPlayerPosition[player.userId].angle = markerAngle;
+				}
+			}
+			else {
+				markerAngle = state.previousPlayerPosition[player.userId].angle ?? 0;
+			}
+			
+			// DRAW TRAIN
+			//  check train.svg. can't access the DOM of a svg within a <img>, but want to be able to dynamically color.
+			//  draw the train by hand!
+			const trainMarkerDim = { x: 12, y: 6 };
+			const trainScale = isHovered ? 0.5 : 0.4;
+			context.translate(canvasPosition.x, canvasPosition.y);
+			context.rotate(markerAngle);
+			context.scale(trainScale, trainScale);
+			context.translate(-trainMarkerDim.x / 2, -trainMarkerDim.y / 2);
+			context.fillStyle = getPlayerColor(name);
+			context.fill(new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")); // BODY
+			context.fillStyle = "#00000020";
+			context.fill(new Path2D("M8.5 1 l2 0 l1 2 l-1 2 l-2 0 l1,-2Z")); // HOOD
+			context.strokeStyle = "#000080";
+			context.lineWidth = 1;
+			context.stroke(new Path2D("M8.5 1 l 1,2 l -1,2")); // WINDOW
+			context.strokeStyle = isHovered ? "white" : "black";;
+			context.lineWidth = 1;
+			context.stroke(new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")); // OUTLINE
+			context.translate(trainMarkerDim.x / 2, trainMarkerDim.y / 2);
+			context.scale(1/trainScale, 1/trainScale);
+			context.rotate(-markerAngle);
+			context.translate(-canvasPosition.x, -canvasPosition.y);
+
+			state.previousPlayerPosition[player.userId] = { position: player.position, angle: markerAngle };
+		}
+		else { // not a train
 		context.fillStyle = getPlayerColor(name);
 		context.beginPath();
 		context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
@@ -763,6 +807,7 @@ const drawScene = () => {
 		context.strokeStyle = isHovered ? "white" : "black";
 		context.lineWidth = Math.max((isHovered ? 0.7 : 0.4) * scaleFactor, 0.25);
 		context.stroke();
+		}
 	});
 
 	if (state.currentScale > 300) return;
