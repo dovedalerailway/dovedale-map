@@ -1005,12 +1005,12 @@ const start = () => {
 	createWebSocket();
 
 	elements.serverSelect.addEventListener("change", () => {
-		if (elements.serverSelect.selectedOptions.value === "all") {
+		if (elements.serverSelect.value === "all") {
 			elements.joinBtn.href = "roblox://experiences/start?placeId=12018816388";
 		} else {
 			elements.joinBtn.href =
 				"roblox://experiences/start?placeId=12018816388&gameInstanceId=" +
-				elements.serverSelect.selectedOptions[0].value;
+				elements.serverSelect.value;
 		}
 	});
 };
