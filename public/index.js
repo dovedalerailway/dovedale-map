@@ -476,8 +476,8 @@ const createWebSocket = () => {
 		state.ws.close();
 		state.ws = null;
 	}
-	// if were in an dev env use the prod endpoint
-	if (window.location.host.split(":")[0] === "localhost") {
+	// if we're in an dev env use the prod endpoint
+	if (window.location.hostname === "localhost") {
 		state.ws = new WebSocket(`wss://map.dovedale.wiki/api/ws`);
 	} else {
 		state.ws = new WebSocket(
@@ -1004,15 +1004,15 @@ const start = () => {
 		'<option value="all">All Servers (0 players)</option>';
 	createWebSocket();
 
-	elements.serverSelect.onchange = () => {
-		if (elements.serverSelect.selectedOptions[0].value === "all") {
+	elements.serverSelect.addEventListener("change", () => {
+		if (elements.serverSelect.selectedOptions.value === "all") {
 			elements.joinBtn.href = "roblox://experiences/start?placeId=12018816388";
 		} else {
 			elements.joinBtn.href =
 				"roblox://experiences/start?placeId=12018816388&gameInstanceId=" +
 				elements.serverSelect.selectedOptions[0].value;
 		}
-	};
+	});
 };
 
 start();
