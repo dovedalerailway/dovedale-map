@@ -476,15 +476,11 @@ const createWebSocket = () => {
 		state.ws.close();
 		state.ws = null;
 	}
-	// if we're in an dev env use the prod endpoint
-	if (window.location.hostname === "localhost") {
-		state.ws = new WebSocket(`wss://map.dovedale.wiki/api/ws`);
-	} else {
-		state.ws = new WebSocket(
-			(location.protocol == "http:" ? "ws://" : "wss://") +
-				`${window.location.host}/api/ws`,
-		);
-	}
+
+	state.ws = new WebSocket(
+		(location.protocol == "http:" ? "ws://" : "wss://") +
+			`${window.location.host}/api/ws`,
+	);
 
 	state.ws.addEventListener("open", () => {
 		console.log("WebSocket connected");
