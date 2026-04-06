@@ -7,7 +7,7 @@
 	<title>Dovedale Live Map</title>
 	<script src="https://cdn.tailwindcss.com/3.4.16"></script>
 	<link rel="stylesheet"
-		href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&family=Inter:opsz,wght@14..32,200..700" />
+		href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&family=Inter:opsz,wght@14..32,200..700" />
 	<meta name="description" content="A live map of Dovedale Railway, showing players with a server selector." />
 	<meta name="keywords" content="dovedale, railway, dovedale railway, dovedale map, live map, dovedale railway map" />
 	<link rel="canonical" href="https://map.dovedale.wiki/" />
@@ -32,7 +32,8 @@
 </head>
 
 <body class="bg-zinc-950 text-xl overflow-hidden h-full w-full fixed font-[Inter] text-zinc-100">
-	<div id="connectionPopup" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-zinc-900 rounded-3xl p-4 shadow-xl transition-all duration-300 pointer-events-none">
+	<div id="connectionPopup"
+		class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-zinc-900 rounded-3xl p-4 shadow-xl transition-all duration-300 pointer-events-none">
 		<div class="flex items-center gap-4">
 			<div class="text-red-400 flex-shrink-0">
 				<i class="material-symbols-outlined text-3xl">error</i>
@@ -41,7 +42,8 @@
 				<h3 class="text-sm font-semibold mb-1 m-0">Connection Lost</h3>
 				<p class="text-xs text-zinc-300 m-0">Unable to connect to the server</p>
 			</div>
-			<button id="reconnectBtn" class="bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:cursor-not-allowed border-none rounded-lg px-3 py-2 text-base font-medium cursor-pointer flex items-center gap-1.5 transition-colors duration-200 whitespace-nowrap">
+			<button id="reconnectBtn" type="button"
+				class="bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 disabled:cursor-not-allowed border-none rounded-lg px-3 py-2 text-base font-medium cursor-pointer flex items-center gap-1.5 transition-colors duration-200 whitespace-nowrap">
 				<i id="reconnectIcon" class="material-symbols-outlined text-4">refresh</i>
 				Reconnect
 			</button>
@@ -99,15 +101,22 @@
 		<i class="material-symbols-outlined">arrow_outward</i>
 	</a>
 
-	<a href="https://github.com/dovedalerailway/dovedale-map"
-		target="_blank"
-		class="fixed bottom-2 right-2 bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition z-30"
-		title="GitHub Repository">
-		<img src="/images/github-mark-white.svg" alt="GitHub Logo" width="28" height="28">
-	</a>
 
-	<p class="fixed bottom-2 left-3 z-20 text-zinc-500 text-sm hidden sm:block h-auto" id="hover-hint">Hover over a dot to see the player's name</p>
-	
+	<div class="fixed bottom-2 right-2 grid grid-rows-2 gap-2">
+		<a href="roblox://experiences/start?placeId=12018816388" id="joinBtn" target="_self"
+			class=" bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition z-30 flex items-center justify-center" title="Join Server">
+			<span class="material-symbols-outlined text-3xl leading-none" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+		</a>
+		<a href="https://github.com/dovedalerailway/dovedale-map" target="_blank" rel="noopener noreferrer"
+			class="bg-zinc-800 p-2 rounded-lg hover:bg-zinc-700 transition z-30" title="GitHub Repository">
+			<img src="/images/github-mark-white.svg" alt="GitHub Logo" width="28" height="28">
+		</a>
+	</div>
+
+
+	<p class="fixed bottom-2 left-3 z-20 text-zinc-500 text-sm hidden sm:block h-auto" id="hover-hint">Hover over a dot
+		to see the player's name</p>
+
 	<script src="index.js?v=22"></script>
 </body>
 
