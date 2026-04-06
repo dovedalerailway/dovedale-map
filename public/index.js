@@ -678,6 +678,13 @@ const updateServerList = (data = null) => {
 	}
 };
 
+const TRAIN_PATH = {
+	body: new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z"),
+	hood: new Path2D("M8.5 1 l2 0 l1 2 l-1 2 l-2 0 l1,-2Z"),
+	window: new Path2D("M8.5 1 l 1,2 l -1,2"),
+	outline: new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")
+};
+
 const drawScene = () => {
 	const transformedPoint1 = context.transformedPoint(0, 0);
 	const transformedPoint2 = context.transformedPoint(
@@ -784,15 +791,15 @@ const drawScene = () => {
 			context.scale(trainScale, trainScale);
 			context.translate(-trainMarkerDim.x / 2, -trainMarkerDim.y / 2);
 			context.fillStyle = getPlayerColor(name);
-			context.fill(new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")); // BODY
+			context.fill(TRAIN_PATH.body); // BODY
 			context.fillStyle = "#00000020";
-			context.fill(new Path2D("M8.5 1 l2 0 l1 2 l-1 2 l-2 0 l1,-2Z")); // HOOD
+			context.fill(TRAIN_PATH.hood); // HOOD
 			context.strokeStyle = "#000080";
 			context.lineWidth = 1;
-			context.stroke(new Path2D("M8.5 1 l 1,2 l -1,2")); // WINDOW
+			context.stroke(TRAIN_PATH.window); // WINDOW
 			context.strokeStyle = isHovered ? "white" : "black";;
 			context.lineWidth = 1;
-			context.stroke(new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")); // OUTLINE
+			context.stroke(TRAIN_PATH.outline); // OUTLINE
 			context.translate(trainMarkerDim.x / 2, trainMarkerDim.y / 2);
 			context.scale(1 / trainScale, 1 / trainScale);
 			context.rotate(-markerAngle);
