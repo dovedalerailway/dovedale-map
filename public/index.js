@@ -814,7 +814,6 @@ const drawScene = () => {
 
 	Object.keys(state.previousPlayerPosition).forEach((previousPlayerId) => {
 		if (!activePlayerIds.includes(previousPlayerId)) {
-			console.log("DELETING " + previousPlayerId);
 			delete state.previousPlayerPosition[previousPlayerId];
 		}
 	});
