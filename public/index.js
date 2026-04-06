@@ -480,7 +480,7 @@ const createWebSocket = () => {
 
 	state.ws = new WebSocket(
 		(location.protocol == "http:" ? "ws://" : "wss://") +
-			`${window.location.host}/api/ws`,
+		`${window.location.host}/api/ws`,
 	);
 
 	state.ws.addEventListener("open", () => {
@@ -492,7 +492,7 @@ const createWebSocket = () => {
 
 	state.ws.addEventListener("message", (event) => {
 		try {
-						const data = JSON.parse(event.data);
+			const data = JSON.parse(event.data);
 			const jobId = data.jobId;
 			const playersArray = Array.isArray(data.players) ? data.players : [];
 
@@ -745,9 +745,9 @@ const drawScene = () => {
 
 	const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
 
-let activePlayerIds = []; 
+	let activePlayerIds = [];
 	playersToShow.forEach((player) => {
-activePlayerIds.push(String(player.userId));
+		activePlayerIds.push(String(player.userId));
 
 		const worldX = player.position?.x ?? 0;
 		const worldY = player.position?.y ?? 0;
@@ -773,7 +773,7 @@ activePlayerIds.push(String(player.userId));
 			else {
 				markerAngle = state.previousPlayerPosition[player.userId].angle ?? 0;
 			}
-			
+
 			// DRAW TRAIN
 			//  check train.svg. can't access the DOM of a svg within a <img>, but want to be able to dynamically color.
 			//  draw the train by hand!
@@ -794,7 +794,7 @@ activePlayerIds.push(String(player.userId));
 			context.lineWidth = 1;
 			context.stroke(new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")); // OUTLINE
 			context.translate(trainMarkerDim.x / 2, trainMarkerDim.y / 2);
-			context.scale(1/trainScale, 1/trainScale);
+			context.scale(1 / trainScale, 1 / trainScale);
 			context.rotate(-markerAngle);
 			context.translate(-canvasPosition.x, -canvasPosition.y);
 
@@ -813,7 +813,7 @@ activePlayerIds.push(String(player.userId));
 	});
 
 	Object.keys(state.previousPlayerPosition).forEach((previousPlayerId) => {
-		if(!activePlayerIds.includes(previousPlayerId)) {
+		if (!activePlayerIds.includes(previousPlayerId)) {
 			console.log("DELETING " + previousPlayerId);
 			delete state.previousPlayerPosition[previousPlayerId];
 		}
