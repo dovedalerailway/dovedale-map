@@ -492,7 +492,7 @@ const createWebSocket = () => {
 
 	state.ws.addEventListener("message", (event) => {
 		try {
-			const data = JSON.parse(event.data);
+						const data = JSON.parse(event.data);
 			const jobId = data.jobId;
 			const playersArray = Array.isArray(data.players) ? data.players : [];
 
@@ -745,7 +745,10 @@ const drawScene = () => {
 
 	const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
 
+let activePlayerIds = []; 
 	playersToShow.forEach((player) => {
+activePlayerIds.push(String(player.userId));
+
 		const worldX = player.position?.x ?? 0;
 		const worldY = player.position?.y ?? 0;
 		const name = player.username ?? "Unknown";
@@ -798,14 +801,21 @@ const drawScene = () => {
 			state.previousPlayerPosition[player.userId] = { position: player.position, angle: markerAngle };
 		}
 		else { // not a train
-		context.fillStyle = getPlayerColor(name);
-		context.beginPath();
-		context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
-		context.fill();
+			context.fillStyle = getPlayerColor(name);
+			context.beginPath();
+			context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
+			context.fill();
 
-		context.strokeStyle = isHovered ? "white" : "black";
-		context.lineWidth = Math.max((isHovered ? 0.7 : 0.4) * scaleFactor, 0.25);
-		context.stroke();
+			context.strokeStyle = isHovered ? "white" : "black";
+			context.lineWidth = Math.max((isHovered ? 0.7 : 0.4) * scaleFactor, 0.25);
+			context.stroke();
+		}
+	});
+
+	Object.keys(state.previousPlayerPosition).forEach((previousPlayerId) => {
+		if(!activePlayerIds.includes(previousPlayerId)) {
+			console.log("DELETING " + previousPlayerId);
+			delete state.previousPlayerPosition[previousPlayerId];
 		}
 	});
 
