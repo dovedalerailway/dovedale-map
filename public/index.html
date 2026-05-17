@@ -68,31 +68,61 @@
 		<canvas width="2867.7" height="1372.2"></canvas>
 	</div>
 
+	<!-- hover tooltip -->
 	<div id="tooltip"
 		class="pl-3 pr-3.5 py-3 bg-zinc-800 rounded-2xl inline-flex flex-col justify-start items-start gap-2.5 fixed hidden sm:max-w-md max-w-[90vw] z-20">
-		<div id="player" class="inline-flex justify-center items-center gap-1.5">
+		<div class="tt-player inline-flex justify-center items-center gap-1.5">
 			<span class="material-symbols-outlined">person</span>
 			<div class="text-xl">MrToes_guy</div>
 		</div>
-		<div id="destination" class="inline-flex justify-center items-center gap-1.5">
+		<div class="tt-destination inline-flex justify-center items-center gap-1.5">
 			<span class="material-symbols-outlined">location_on</span>
 			<div class="text-xl">Sebi's House</div>
 		</div>
-		<div id="train-name" class="inline-flex justify-center items-center gap-1.5">
+		<div class="tt-train-name inline-flex justify-center items-center gap-1.5">
 			<span class="material-symbols-outlined">train</span>
 			<div class="text-xl">Class 2 Bajillion</div>
 		</div>
-		<div id="headcode" class="inline-flex justify-center items-center gap-1.5">
+		<div class="tt-headcode inline-flex justify-center items-center gap-1.5">
 			<span class="material-symbols-outlined">pin</span>
 			<div class="text-xl">1P11</div>
 		</div>
-		<div id="train-class" class="inline-flex justify-center items-center gap-1.5">
+		<div class="tt-train-class inline-flex justify-center items-center gap-1.5">
 			<span class="material-symbols-outlined">tag</span>
 			<div class="text-xl">Passenger</div>
 		</div>
-		<div id="server" class="inline-flex justify-center items-center gap-1.5">
+		<div class="tt-server inline-flex justify-center items-center gap-1.5">
 			<span class="material-symbols-outlined">dns</span>
 			<div class="text-xl">2832198b</div>
+		</div>
+	</div>
+
+	<!-- pinned tooltip -->
+	<div id="tooltip-pinned"
+		class="pl-3 pr-3.5 py-3 bg-zinc-800 rounded-2xl inline-flex flex-col justify-start items-start gap-2.5 fixed hidden sm:max-w-md max-w-[90vw] z-20">
+		<div class="tt-player inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">person</span>
+			<div class="text-xl"></div>
+		</div>
+		<div class="tt-destination inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">location_on</span>
+			<div class="text-xl"></div>
+		</div>
+		<div class="tt-train-name inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">train</span>
+			<div class="text-xl"></div>
+		</div>
+		<div class="tt-headcode inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">pin</span>
+			<div class="text-xl"></div>
+		</div>
+		<div class="tt-train-class inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">tag</span>
+			<div class="text-xl"></div>
+		</div>
+		<div class="tt-server inline-flex justify-center items-center gap-1.5">
+			<span class="material-symbols-outlined">dns</span>
+			<div class="text-xl"></div>
 		</div>
 	</div>
 
@@ -115,9 +145,9 @@
 
 
 	<p class="fixed bottom-2 left-3 z-20 text-zinc-500 text-sm hidden sm:block h-auto" id="hover-hint">Hover over a dot
-		to see the player's name</p>
+		to see the player's name or click to pin them.</p>
 
-	<script src="index.js?v=22"></script>
+	<script src="index.js?v=23"></script>
 </body>
 
 </html>

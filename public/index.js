@@ -101,18 +101,68 @@ const COLORS = [
 	"#D7C59A",
 ];
 
+const TRAIN_CLASS_COLORS = {
+	'1': '#CC0000',
+	'2': '#E8A800',
+	'3': '#2E7D32',
+	'5': '#1565C0',
+	'9': '#AD1457',
+	'0': '#6A1B9A',
+};
+
+// stripe color along the cab window, by destination letter
+const TRAIN_DEST_COLORS = {
+	'A': '#E05050',
+	'C': '#4488DD',
+	'E': '#44AA55',
+	'F': '#CC8800',
+	'G': '#8844CC',
+	'H': '#229999',
+	'J': '#CC5500',
+	'M': '#BB3388',
+	'Q': '#777777',
+	'S': '#AAAA00',
+	'W': '#228866',
+	'Z': '#AAAAAA',
+};
+
+const getTrainBodyColor = (headcode) => {
+	if (!headcode || headcode === "----") return "#9E9E9E";
+	return TRAIN_CLASS_COLORS[headcode[0]] ?? "#9E9E9E";
+};
+
+const getTrainStripeColor = (headcode) => {
+	if (!headcode || headcode === "----" || headcode.length < 2) return "#4466AA";
+	return TRAIN_DEST_COLORS[headcode[1].toUpperCase()] ?? "#4466AA";
+};
+
+const getPlayerColor = (name) => {
+	if (!name) return "#00FFFF";
+
+	let value = 0;
+	for (let index = 0; index < name.length; index++) {
+		const charValue = name.charCodeAt(index);
+		let reverseIndex = name.length - index;
+		if (name.length % 2 === 1) reverseIndex--;
+		value += reverseIndex % 4 >= 2 ? -charValue : charValue;
+	}
+
+	const colorIndex = ((value % COLORS.length) + COLORS.length) % COLORS.length;
+	return COLORS[colorIndex];
+};
+
 const canvas = document.querySelector("canvas");
 const context = canvas.getContext("2d");
 const elements = {
 	players: document.getElementById("players"),
 	tooltip: document.getElementById("tooltip"),
+	tooltipPinned: document.getElementById("tooltip-pinned"),
 	serverSelect: document.getElementById("servers"),
 	connectionPopup: document.getElementById("connectionPopup"),
 	reconnectBtn: document.getElementById("reconnectBtn"),
 	joinBtn: document.getElementById("joinBtn"),
 };
 
-// Application State
 class AppState {
 	constructor() {
 		this.serverData = {};
@@ -147,7 +197,6 @@ class AppState {
 
 const state = new AppState();
 
-// Utility Functions
 const getCanvasCoordinates = (event) => {
 	const rect = canvas.getBoundingClientRect();
 	return {
@@ -160,21 +209,6 @@ const getDistanceBetweenTouches = (touches) => {
 	const distanceX = touches[0].clientX - touches[1].clientX;
 	const distanceY = touches[0].clientY - touches[1].clientY;
 	return Math.hypot(distanceX, distanceY);
-};
-
-const getPlayerColor = (name) => {
-	if (!name) return "#00FFFF";
-
-	let value = 0;
-	for (let index = 0; index < name.length; index++) {
-		const charValue = name.charCodeAt(index);
-		let reverseIndex = name.length - index;
-		if (name.length % 2 === 1) reverseIndex--;
-		value += reverseIndex % 4 >= 2 ? -charValue : charValue;
-	}
-
-	const colorIndex = ((value % COLORS.length) + COLORS.length) % COLORS.length;
-	return COLORS[colorIndex];
 };
 
 const worldToCanvas = (worldX, worldY) => {
@@ -267,73 +301,70 @@ const zoomAt = (screenX, screenY, scaleFactor) => {
 
 const getPlayerAtPosition = (canvasX, canvasY) => {
 	const playersToCheck = state.getAllPlayers();
+	const transform = context.getTransform();
 
 	for (const player of playersToCheck) {
 		const worldX = player.position?.x ?? 0;
 		const worldY = player.position?.y ?? 0;
 
-		const baseCanvasPosition = worldToCanvas(worldX, worldY);
-		const transform = context.getTransform();
+		const base = worldToCanvas(worldX, worldY);
+		const screenX = base.x * transform.a + base.y * transform.c + transform.e;
+		const screenY = base.x * transform.b + base.y * transform.d + transform.f;
 
-		const screenX =
-			baseCanvasPosition.x * transform.a +
-			baseCanvasPosition.y * transform.c +
-			transform.e;
-		const screenY =
-			baseCanvasPosition.x * transform.b +
-			baseCanvasPosition.y * transform.d +
-			transform.f;
+		if (player.trainData) {
+			const angle = state.previousPlayerPosition[player.userId]?.angle ?? 0;
+			const screenScale = Math.abs(transform.a);
+			const halfW = (12 * 0.28 * screenScale) / 2 + 3;
+			const halfH = (6 * 0.28 * screenScale) / 2 + 3;
 
-		const baseRadius = 3;
-		const scaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
-		const hitRadius = baseRadius * scaleFactor * Math.abs(transform.a);
+			const dx = canvasX - screenX;
+			const dy = canvasY - screenY;
+			const cos = Math.cos(-angle);
+			const sin = Math.sin(-angle);
+			const lx = dx * cos - dy * sin;
+			const ly = dx * sin + dy * cos;
 
-		const distance = Math.hypot(screenX - canvasX, screenY - canvasY);
-
-		if (distance <= hitRadius) return player;
+			if (Math.abs(lx) <= halfW && Math.abs(ly) <= halfH) return player;
+		} else {
+			const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
+			const hitRadius = 3 * dotScaleFactor * Math.abs(transform.a);
+			if (Math.hypot(screenX - canvasX, screenY - canvasY) <= hitRadius) return player;
+		}
 	}
 
 	return null;
 };
 
-const updateTooltip = (player, isPinned = false) => {
-	if (!player) {
-		elements.tooltip.classList.add("hidden");
-		return;
-	}
-
+const populateTooltip = (player, el, isPinned) => {
 	const name = player.username ?? "Unknown";
 
-	const playerElement = elements.tooltip.querySelector("#player div");
-	if (playerElement) playerElement.textContent = name;
+	const playerEl = el.querySelector(".tt-player div");
+	if (playerEl) playerEl.textContent = name;
 
-	const destinationSection = elements.tooltip.querySelector("#destination");
-	const trainNameSection = elements.tooltip.querySelector("#train-name");
-	const headcodeSection = elements.tooltip.querySelector("#headcode");
-	const trainClassSection = elements.tooltip.querySelector("#train-class");
+	const destinationSection = el.querySelector(".tt-destination");
+	const trainNameSection = el.querySelector(".tt-train-name");
+	const headcodeSection = el.querySelector(".tt-headcode");
+	const trainClassSection = el.querySelector(".tt-train-class");
 
 	if (player.trainData && Object.keys(player.trainData).length > 0) {
-		const { destination, trainClass, headcode, trainType } = player.trainData;
+		const { destination, trainClass, headcode } = player.trainData;
 
 		if (destination && destination !== "Unknown" && destinationSection) {
-			const destinationDiv = destinationSection.querySelector("div");
-			if (destinationDiv) destinationDiv.textContent = destination;
+			destinationSection.querySelector("div").textContent = destination;
 			destinationSection.style.display = "flex";
 		} else if (destinationSection) {
 			destinationSection.style.display = "none";
 		}
 
 		if (trainClass && trainClass !== "Unknown" && trainClassSection) {
-			const classDiv = trainClassSection.querySelector("div");
-			if (classDiv) classDiv.textContent = trainClass;
+			trainClassSection.querySelector("div").textContent = trainClass;
 			trainClassSection.style.display = "flex";
 		} else if (trainClassSection) {
 			trainClassSection.style.display = "none";
 		}
 
 		if (headcode && headcode !== "----" && headcode !== "" && headcodeSection) {
-			const headDiv = headcodeSection.querySelector("div");
-			if (headDiv) headDiv.textContent = headcode;
+			headcodeSection.querySelector("div").textContent = headcode;
 			headcodeSection.style.display = "flex";
 		} else if (headcodeSection) {
 			headcodeSection.style.display = "none";
@@ -341,86 +372,88 @@ const updateTooltip = (player, isPinned = false) => {
 
 		if (trainNameSection) trainNameSection.style.display = "none";
 	} else {
-		[
-			destinationSection,
-			trainNameSection,
-			headcodeSection,
-			trainClassSection,
-		].forEach((section) => {
-			if (section) section.style.display = "none";
+		[destinationSection, trainNameSection, headcodeSection, trainClassSection].forEach((s) => {
+			if (s) s.style.display = "none";
 		});
 	}
 
-	const playerSection = elements.tooltip.querySelector("#player");
+	const playerSection = el.querySelector(".tt-player");
 	if (playerSection) playerSection.style.display = "flex";
 
-	const serverSection = elements.tooltip.querySelector("#server");
+	const serverSection = el.querySelector(".tt-server");
 	if (serverSection && state.currentServer === "all") {
-		const serverDiv = serverSection.querySelector("div");
-		if (serverDiv) {
-			let serverName = "Unknown";
-			for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
-				if (serverInfo.players && serverInfo.players.includes(player)) {
-					serverName =
-						jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
-					break;
-				}
+		let serverName = "Unknown";
+		for (const [jobId, serverInfo] of Object.entries(state.serverData)) {
+			if (serverInfo.players && serverInfo.players.includes(player)) {
+				serverName = jobId.length > 6 ? jobId.substring(jobId.length - 6) : jobId;
+				break;
 			}
-			serverDiv.textContent = serverName;
 		}
+		serverSection.querySelector("div").textContent = serverName;
 		serverSection.style.display = "flex";
 	} else if (serverSection) {
 		serverSection.style.display = "none";
 	}
 
-	// Position tooltip
 	const worldX = player.position?.x ?? 0;
 	const worldY = player.position?.y ?? 0;
-	const baseCanvasPosition = worldToCanvas(worldX, worldY);
+	const base = worldToCanvas(worldX, worldY);
 	const transform = context.getTransform();
 
-	const screenX =
-		baseCanvasPosition.x * transform.a +
-		baseCanvasPosition.y * transform.c +
-		transform.e;
-	const screenY =
-		baseCanvasPosition.x * transform.b +
-		baseCanvasPosition.y * transform.d +
-		transform.f;
+	const screenX = base.x * transform.a + base.y * transform.c + transform.e;
+	const screenY = base.x * transform.b + base.y * transform.d + transform.f;
 
 	const canvasRect = canvas.getBoundingClientRect();
-	const tooltipX = canvasRect.left + screenX;
-	const tooltipY = canvasRect.top + screenY;
+	let finalX = canvasRect.left + screenX + 15;
+	let finalY = canvasRect.top + screenY - 40;
 
-	let finalX = tooltipX + 15;
-	let finalY = tooltipY - 40;
+	el.classList.remove("hidden");
+	el.style.visibility = "hidden";
 
-	elements.tooltip.classList.remove("hidden");
-	elements.tooltip.style.visibility = "hidden";
+	const tooltipRect = el.getBoundingClientRect();
 
-	const tooltipRect = elements.tooltip.getBoundingClientRect();
+	if (finalX + tooltipRect.width > window.innerWidth) finalX = canvasRect.left + screenX - tooltipRect.width - 15;
+	if (finalY < 0) finalY = canvasRect.top + screenY + 20;
+	if (finalY + tooltipRect.height > window.innerHeight) finalY = canvasRect.top + screenY - tooltipRect.height - 20;
+	if (finalX < 0) finalX = canvasRect.left + screenX + 15;
 
-	if (finalX + tooltipRect.width > window.innerWidth) {
-		finalX = tooltipX - tooltipRect.width - 15;
+	el.style.left = `${finalX}px`;
+	el.style.top = `${finalY}px`;
+	el.style.visibility = "visible";
+	el.style.boxShadow = isPinned ? "0 0 0 2px rgba(59, 130, 246, 0.5)" : "";
+};
+
+const updateTooltip = (player, el, isPinned = false) => {
+	if (!player) {
+		el.classList.add("hidden");
+		return;
 	}
-	if (finalY < 0) {
-		finalY = tooltipY + 20;
-	}
-	if (finalY + tooltipRect.height > window.innerHeight) {
-		finalY = tooltipY - tooltipRect.height - 20;
-	}
-	if (finalX < 0) {
-		finalX = tooltipX + 15;
-	}
+	populateTooltip(player, el, isPinned);
+};
 
-	elements.tooltip.style.left = `${finalX}px`;
-	elements.tooltip.style.top = `${finalY}px`;
-	elements.tooltip.style.visibility = "visible";
-
-	if (isPinned) {
-		elements.tooltip.style.boxShadow = "0 0 0 2px rgba(59, 130, 246, 0.5)";
+const refreshTooltip = (playersToShow) => {
+	if (state.hoveredPlayer) {
+		const still = playersToShow.find(p => p.username === state.hoveredPlayer.username);
+		if (still) {
+			updateTooltip(still, elements.tooltip, false);
+		} else {
+			state.hoveredPlayer = null;
+			elements.tooltip.classList.add("hidden");
+		}
 	} else {
-		elements.tooltip.style.boxShadow = "";
+		elements.tooltip.classList.add("hidden");
+	}
+
+	if (state.pinnedPlayer) {
+		const still = playersToShow.find(p => p.username === state.pinnedPlayer.username);
+		if (still) {
+			updateTooltip(still, elements.tooltipPinned, true);
+		} else {
+			state.pinnedPlayer = null;
+			elements.tooltipPinned.classList.add("hidden");
+		}
+	} else {
+		elements.tooltipPinned.classList.add("hidden");
 	}
 };
 
@@ -464,7 +497,7 @@ const startStaleServerCleanup = () => {
 		clearInterval(state.staleCheckInterval);
 	}
 	console.log("Starting stale server cleanup loop");
-	state.staleCheckInterval = setInterval(cleanupStaleServers, 5000); // every 5s
+	state.staleCheckInterval = setInterval(cleanupStaleServers, 5000);
 };
 
 const stopStaleServerCleanup = () => {
@@ -485,7 +518,8 @@ const createWebSocket = () => {
 		state.ws.close();
 		state.ws = null;
 	}
-
+	
+	//state.ws = new WebSocket("ws://localhost:3000/api/ws");
 	state.ws = new WebSocket(
 		(location.protocol == "http:" ? "ws://" : "wss://") +
 		`${window.location.host}/api/ws`,
@@ -543,21 +577,13 @@ const createWebSocket = () => {
 };
 
 const showConnectionPopup = () => {
-	elements.connectionPopup.classList.remove(
-		"opacity-0",
-		"-translate-y-5",
-		"pointer-events-none",
-	);
+	elements.connectionPopup.classList.remove("opacity-0", "-translate-y-5", "pointer-events-none");
 	elements.connectionPopup.classList.add("opacity-100", "translate-y-0");
 	updateReconnectButton();
 };
 
 const hideConnectionPopup = () => {
-	elements.connectionPopup.classList.add(
-		"opacity-0",
-		"-translate-y-5",
-		"pointer-events-none",
-	);
+	elements.connectionPopup.classList.add("opacity-0", "-translate-y-5", "pointer-events-none");
 	elements.connectionPopup.classList.remove("opacity-100", "translate-y-0");
 
 	elements.reconnectBtn.disabled = false;
@@ -565,9 +591,7 @@ const hideConnectionPopup = () => {
 	elements.reconnectBtn.classList.add("bg-blue-600", "hover:bg-blue-700");
 
 	const reconnectIcon = document.getElementById("reconnectIcon");
-	if (reconnectIcon) {
-		reconnectIcon.classList.remove("animate-spin");
-	}
+	if (reconnectIcon) reconnectIcon.classList.remove("animate-spin");
 
 	elements.reconnectBtn.innerHTML = `
     <i id="reconnectIcon" class="material-symbols-outlined text-4">refresh</i>
@@ -588,9 +612,7 @@ const updateReconnectButton = () => {
 };
 
 const attemptReconnect = () => {
-	if (state.reconnectTimeout) {
-		return;
-	}
+	if (state.reconnectTimeout) return;
 
 	if (state.reconnectAttempts >= state.maxReconnectAttempts) {
 		updateReconnectButton();
@@ -625,9 +647,6 @@ const resetReconnection = () => {
 
 const updateServerList = (data = null) => {
 	const currentServers = Object.keys(state.serverData);
-	const existingServers = Array.from(elements.serverSelect.options)
-		.slice(1)
-		.map((opt) => opt.value);
 
 	if (data?.players) {
 		const playersArray = Array.isArray(data.players) ? data.players : [];
@@ -650,14 +669,10 @@ const updateServerList = (data = null) => {
 		});
 	}
 
-	// this will constantly recreate the options which can
-	//  make selecting an option difficult on certain browsers
-	// TODO: only update when required
 	const selectedValue = elements.serverSelect.value;
 	const totalPlayersCount = Object.values(state.serverData).reduce(
 		(count, serverInfo) =>
-			count +
-			(Array.isArray(serverInfo.players) ? serverInfo.players.length : 0),
+			count + (Array.isArray(serverInfo.players) ? serverInfo.players.length : 0),
 		0,
 	);
 
@@ -689,16 +704,13 @@ const updateServerList = (data = null) => {
 const TRAIN_PATH = {
 	body: new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z"),
 	hood: new Path2D("M8.5 1 l2 0 l1 2 l-1 2 l-2 0 l1,-2Z"),
-	window: new Path2D("M8.5 1 l 1,2 l -1,2"),
+	window: new Path2D("M8.1 1 l1 2 l-1 2"),
 	outline: new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z")
 };
 
 const drawScene = () => {
 	const transformedPoint1 = context.transformedPoint(0, 0);
-	const transformedPoint2 = context.transformedPoint(
-		canvas.width,
-		canvas.height,
-	);
+	const transformedPoint2 = context.transformedPoint(canvas.width, canvas.height);
 	context.clearRect(
 		transformedPoint1.x,
 		transformedPoint1.y,
@@ -734,22 +746,10 @@ const drawScene = () => {
 				const destinationY = offsetY + row * scaledChunkHeight;
 
 				const overlap = Math.max(0.5, 2 / state.currentScale);
-				const drawWidth =
-					scaledChunkWidth + (column < MAP_CONFIG.columns - 1 ? overlap : 0);
-				const drawHeight =
-					scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
+				const drawWidth = scaledChunkWidth + (column < MAP_CONFIG.columns - 1 ? overlap : 0);
+				const drawHeight = scaledChunkHeight + (row < MAP_CONFIG.rows - 1 ? overlap : 0);
 
-				context.drawImage(
-					image,
-					0,
-					0,
-					image.width,
-					image.height,
-					destinationX,
-					destinationY,
-					drawWidth,
-					drawHeight,
-				);
+				context.drawImage(image, 0, 0, image.width, image.height, destinationX, destinationY, drawWidth, drawHeight);
 			}
 		}
 	}
@@ -771,59 +771,61 @@ const drawScene = () => {
 		const canvasPosition = worldToCanvas(worldX, worldY);
 		const isPinned = state.pinnedPlayer?.username === name;
 		const isHovered = state.hoveredPlayer?.username === name;
-		const baseRadius = (isPinned || isHovered) ? 2.5 : 2;
-		const radius = baseRadius * dotScaleFactor;
+		const highlighted = isPinned || isHovered;
 
 		if (player.trainData) {
-			const lastPlayerPosition = state.previousPlayerPosition[player.userId]?.position ?? { x: 0, y: 0 };
+			const lastPos = state.previousPlayerPosition[player.userId]?.position ?? { x: 0, y: 0 };
+			const dist = (player.position.x - lastPos.x) ** 2 + (player.position.y - lastPos.y) ** 2;
+			let markerAngle = Math.atan2(player.position.y - lastPos.y, player.position.x - lastPos.x);
 
-			const dist = (player.position.x - lastPlayerPosition.x) ** 2 + (player.position.y - lastPlayerPosition.y) ** 2;
-			let markerAngle = Math.atan2((player.position.y - lastPlayerPosition.y), (player.position.x - lastPlayerPosition.x));
-
-			// take care of "disco trains" require minimum distance to change angle
 			if (dist > 1) {
 				if (state.previousPlayerPosition[player.userId]) {
 					state.previousPlayerPosition[player.userId].angle = markerAngle;
 				}
-			}
-			else {
-				markerAngle = state.previousPlayerPosition[player.userId].angle ?? 0;
+			} else {
+				markerAngle = state.previousPlayerPosition[player.userId]?.angle ?? 0;
 			}
 
-			// DRAW TRAIN
-			//  check train.svg. can't access the DOM of a svg within a <img>, but want to be able to dynamically color.
-			//  draw the train by hand!
 			const trainMarkerDim = { x: 12, y: 6 };
-			const trainScale = (isPinned || isHovered) ? 0.5 : 0.4;
+			const trainScale = highlighted ? 0.36 : 0.28;
 			context.translate(canvasPosition.x, canvasPosition.y);
 			context.rotate(markerAngle);
 			context.scale(trainScale, trainScale);
 			context.translate(-trainMarkerDim.x / 2, -trainMarkerDim.y / 2);
-			context.fillStyle = getPlayerColor(name);
-			context.fill(TRAIN_PATH.body); // BODY
-			context.fillStyle = "#00000020";
-			context.fill(TRAIN_PATH.hood); // HOOD
-			context.strokeStyle = "#000080";
+
+			const headcode = player.trainData?.headcode;
+
+			context.fillStyle = getTrainBodyColor(headcode);
+			context.fill(TRAIN_PATH.body);
+
+			context.strokeStyle = "#000000";
+			context.lineWidth = 2;
+			context.stroke(TRAIN_PATH.window);
+			context.strokeStyle = getTrainStripeColor(headcode);
+			context.lineWidth = 1.2;
+			context.stroke(TRAIN_PATH.window);
+
+			context.strokeStyle = highlighted ? "white" : "#222222";
 			context.lineWidth = 1;
-			context.stroke(TRAIN_PATH.window); // WINDOW
-			context.strokeStyle = (isPinned || isHovered) ? "white" : "black";
-			context.lineWidth = 1;
-			context.stroke(TRAIN_PATH.outline); // OUTLINE
+			context.stroke(TRAIN_PATH.outline);
+
 			context.translate(trainMarkerDim.x / 2, trainMarkerDim.y / 2);
 			context.scale(1 / trainScale, 1 / trainScale);
 			context.rotate(-markerAngle);
 			context.translate(-canvasPosition.x, -canvasPosition.y);
 
 			state.previousPlayerPosition[player.userId] = { position: player.position, angle: markerAngle };
-		}
-		else { // not a train
+		} else {
+			const baseRadius = highlighted ? 2.5 : 2;
+			const radius = baseRadius * dotScaleFactor;
+
 			context.fillStyle = getPlayerColor(name);
 			context.beginPath();
 			context.arc(canvasPosition.x, canvasPosition.y, radius, 0, Math.PI * 2);
 			context.fill();
 
-			context.strokeStyle = (isPinned || isHovered) ? "white" : "black";
-			context.lineWidth = Math.max(((isPinned || isHovered) ? 0.7 : 0.4) * scaleFactor, 0.25);
+			context.strokeStyle = highlighted ? "white" : "black";
+			context.lineWidth = Math.max((highlighted ? 0.7 : 0.4) * scaleFactor, 0.25);
 			context.stroke();
 		}
 	});
@@ -834,19 +836,7 @@ const drawScene = () => {
 		}
 	});
 
-	// Update tooltip position if a player is pinned
-	if (state.pinnedPlayer) {
-		const pinnedStillExists = playersToShow.find(
-			p => p.username === state.pinnedPlayer.username
-		);
-		
-		if (pinnedStillExists) {
-			updateTooltip(pinnedStillExists, true);
-		} else {
-			state.pinnedPlayer = null;
-			elements.tooltip.classList.add("hidden");
-		}
-	}
+	refreshTooltip(playersToShow);
 
 	if (state.currentScale > 300) return;
 	const markerFontSize = Math.max(0.2, 10 / Math.pow(state.currentScale, 0.3));
@@ -924,10 +914,7 @@ const initializeMap = () => {
 const handleMouseEvents = () => {
 	canvas.addEventListener("mousedown", (event) => {
 		const mousePosition = getCanvasCoordinates(event);
-		state.dragStart = context.transformedPoint(
-			mousePosition.x,
-			mousePosition.y,
-		);
+		state.dragStart = context.transformedPoint(mousePosition.x, mousePosition.y);
 		state.dragStartTime = Date.now();
 		state.isDragging = true;
 		return false;
@@ -935,31 +922,22 @@ const handleMouseEvents = () => {
 
 	canvas.addEventListener("mousemove", (event) => {
 		if (state.isDragging) {
-			if (state.hoveredPlayer && !state.pinnedPlayer) {
+			if (state.hoveredPlayer) {
 				state.hoveredPlayer = null;
-				elements.tooltip.classList.add("hidden");
+				if (!state.pinnedPlayer) elements.tooltip.classList.add("hidden");
 			}
 
 			const mousePosition = getCanvasCoordinates(event);
-			const currentPoint = context.transformedPoint(
-				mousePosition.x,
-				mousePosition.y,
-			);
-			const distanceX = currentPoint.x - state.dragStart.x;
-			const distanceY = currentPoint.y - state.dragStart.y;
-
-			context.translate(distanceX, distanceY);
+			const currentPoint = context.transformedPoint(mousePosition.x, mousePosition.y);
+			context.translate(currentPoint.x - state.dragStart.x, currentPoint.y - state.dragStart.y);
 			drawScene();
 		} else {
-			if (!state.pinnedPlayer) {
-				const mousePosition = getCanvasCoordinates(event);
-				const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
+			const mousePosition = getCanvasCoordinates(event);
+			const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
 
-				if (player !== state.hoveredPlayer) {
-					state.hoveredPlayer = player;
-					updateTooltip(player, false);
-					drawScene();
-				}
+			if (player !== state.hoveredPlayer) {
+				state.hoveredPlayer = player;
+				drawScene();
 			}
 		}
 	});
@@ -968,7 +946,7 @@ const handleMouseEvents = () => {
 		state.isDragging = false;
 		state.dragStart = null;
 
-		if (state.hoveredPlayer && !state.pinnedPlayer) {
+		if (state.hoveredPlayer) {
 			state.hoveredPlayer = null;
 			elements.tooltip.classList.add("hidden");
 			drawScene();
@@ -978,25 +956,21 @@ const handleMouseEvents = () => {
 	canvas.addEventListener("mouseup", (event) => {
 		const clickDuration = Date.now() - state.dragStartTime;
 		const mousePosition = getCanvasCoordinates(event);
-		
+
 		if (clickDuration < 200) {
 			const player = getPlayerAtPosition(mousePosition.x, mousePosition.y);
-			
+
 			if (player) {
 				if (state.pinnedPlayer?.username === player.username) {
 					state.pinnedPlayer = null;
-					state.hoveredPlayer = null;
-					elements.tooltip.classList.add("hidden");
+					elements.tooltipPinned.classList.add("hidden");
 				} else {
 					state.pinnedPlayer = player;
-					state.hoveredPlayer = null;
-					updateTooltip(player, true);
 				}
 				drawScene();
 			} else if (state.pinnedPlayer) {
-				// Clicked empty space, unpin
 				state.pinnedPlayer = null;
-				elements.tooltip.classList.add("hidden");
+				elements.tooltipPinned.classList.add("hidden");
 				drawScene();
 			}
 		}
@@ -1029,10 +1003,7 @@ const handleTouchEvents = () => {
 
 			if (event.touches.length === 1) {
 				const touchPosition = getCanvasCoordinates(event.touches[0]);
-				state.dragStart = context.transformedPoint(
-					touchPosition.x,
-					touchPosition.y,
-				);
+				state.dragStart = context.transformedPoint(touchPosition.x, touchPosition.y);
 				state.isDragging = true;
 			} else if (event.touches.length === 2) {
 				state.lastTouchDistance = getDistanceBetweenTouches(event.touches);
@@ -1048,24 +1019,14 @@ const handleTouchEvents = () => {
 
 			if (event.touches.length === 1 && state.isDragging) {
 				const touchPosition = getCanvasCoordinates(event.touches[0]);
-				const currentPoint = context.transformedPoint(
-					touchPosition.x,
-					touchPosition.y,
-				);
-				const distanceX = currentPoint.x - state.dragStart.x;
-				const distanceY = currentPoint.y - state.dragStart.y;
-
-				context.translate(distanceX, distanceY);
+				const currentPoint = context.transformedPoint(touchPosition.x, touchPosition.y);
+				context.translate(currentPoint.x - state.dragStart.x, currentPoint.y - state.dragStart.y);
 				drawScene();
 			} else if (event.touches.length === 2) {
 				const newDistance = getDistanceBetweenTouches(event.touches);
 				const scale = newDistance / state.lastTouchDistance;
-
-				const centerX =
-					(event.touches[0].clientX + event.touches[1].clientX) / 2;
-				const centerY =
-					(event.touches[0].clientY + event.touches[1].clientY) / 2;
-
+				const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+				const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
 				zoomAt(centerX, centerY, scale);
 				state.lastTouchDistance = newDistance;
 			}
@@ -1077,26 +1038,23 @@ const handleTouchEvents = () => {
 		const touchDuration = Date.now() - touchStartTime;
 
 		if (event.touches.length < 2) state.lastTouchDistance = 0;
-		
+
 		if (event.touches.length === 0) {
 			if (touchDuration < 200 && event.changedTouches.length === 1) {
 				const touchPosition = getCanvasCoordinates(event.changedTouches[0]);
 				const player = getPlayerAtPosition(touchPosition.x, touchPosition.y);
-				
+
 				if (player) {
 					if (state.pinnedPlayer?.username === player.username) {
 						state.pinnedPlayer = null;
-						state.hoveredPlayer = null;
-						elements.tooltip.classList.add("hidden");
+						elements.tooltipPinned.classList.add("hidden");
 					} else {
 						state.pinnedPlayer = player;
-						state.hoveredPlayer = null;
-						updateTooltip(player, true);
 					}
 					drawScene();
 				} else if (state.pinnedPlayer) {
 					state.pinnedPlayer = null;
-					elements.tooltip.classList.add("hidden");
+					elements.tooltipPinned.classList.add("hidden");
 					drawScene();
 				}
 			}
@@ -1142,8 +1100,7 @@ const start = () => {
 	canvas.height = window.innerHeight;
 
 	drawScene();
-	elements.serverSelect.innerHTML =
-		'<option value="all">All Servers (0 players)</option>';
+	elements.serverSelect.innerHTML = '<option value="all">All Servers (0 players)</option>';
 	createWebSocket();
 };
 

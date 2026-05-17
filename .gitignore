@@ -5,3 +5,4 @@ rorender
 **/.DS_Store
 bun.lock
 package-lock.json
+test.ts
