@@ -134,8 +134,14 @@ async function positionsApi(context: Context) {
 		);
 	}
 
-	webSockets.forEach((webSocket) => {
-		webSocket.send(JSON.stringify(data));
+	const message = JSON.stringify(data);
+	webSockets = webSockets.filter((webSocket) => {
+		try {
+			webSocket.send(message);
+			return true;
+		} catch { // returning false will remove the dead socket from the webSockets array
+			return false;
+		}
 	});
 
 	return context.json({ success: true });
