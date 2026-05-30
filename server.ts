@@ -145,6 +145,7 @@ async function positionsApi(context: Context) {
 					trainType: player.trainData[3],
 				}
 			: player.trainData,
+		box: player.box,
 	}));
 
 	if (serverTimeouts.has(data.jobId)) {
