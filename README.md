@@ -20,7 +20,12 @@ You can connect to the WebSocket at `https://map.dovedale.wiki/ws` and you will 
 		{
 			"username": "cl0vermead0w",
 			"userId": 92133828,
-			"position": { "y": -1193, "x": 11813 }
+			"position": { "y": -1193, "x": 11813 },
+			"box": {
+				"name": "gleethrop",
+				"fullName": "Gleethrop End Box",
+				"isHost": true
+			}
 		},
 		{
 			"username": "MrTortoise_guy",
@@ -30,7 +35,9 @@ You can connect to the WebSocket at `https://map.dovedale.wiki/ws` and you will 
 				"destination": "Gleethrop End",
 				"trainClass": "Class 150/2",
 				"headcode": "2G81",
-				"trainType": "Passenger"
+				"trainType": "Passenger",
+				"trainSpeed": 42.3,
+				"carriageAmount": 2
 			},
 			"position": { "y": -1099, "x": 3173 }
 		}

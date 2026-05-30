@@ -13,6 +13,8 @@ const trainSchema = z.xor([
 		trainClass: z.string(),
 		headcode: z.string(),
 		trainType: z.string(),
+		trainSpeed: z.number().optional(),
+		carriageAmount: z.number().optional(),
 	}),
 ]);
 
@@ -24,6 +26,11 @@ const playerSchema = z.strictObject({
 		x: z.int(),
 		y: z.int(),
 	}),
+	box: z.strictObject({
+		name: z.string(),
+		fullName: z.string(),
+		isHost: z.boolean().optional(),
+	}).optional(),
 });
 const requestSchema = z.strictObject({
 	jobId: z.string(),
