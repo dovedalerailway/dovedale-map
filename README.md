@@ -22,8 +22,8 @@ You can connect to the WebSocket at `https://map.dovedale.wiki/ws` and you will 
 			"userId": 92133828,
 			"position": { "y": -1193, "x": 11813 },
 			"box": {
-				"name": "gleethrop",
-				"fullName": "Gleethrop End Box",
+				"name": "GE",
+				"fullName": "Gleethrop End",
 				"isHost": true
 			}
 		},
