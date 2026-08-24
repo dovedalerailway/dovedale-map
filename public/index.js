@@ -840,7 +840,7 @@ const updateServerList = (data = null) => {
         const count = Array.isArray(state.serverData[jobId]?.players)
             ? state.serverData[jobId].players.length
             : 0;
-        return `${name} (${count} / 50 players)`;
+        return `${name} (${count} / 40 players)`;
     };
 
     const selectedValue = elements.serverSelect.value;
