@@ -138,6 +138,8 @@ const tooltipElements = {
     headcodeDiv: elements.tooltip.querySelector("#headcode div"),
     trainClass: elements.tooltip.querySelector("#train-class"),
     trainClassDiv: elements.tooltip.querySelector("#train-class div"),
+    speed: elements.tooltip.querySelector("#speed"),
+    speedDiv: elements.tooltip.querySelector("#speed div"),
     server: elements.tooltip.querySelector("#server"),
     serverDiv: elements.tooltip.querySelector("#server div"),
 };
@@ -420,7 +422,7 @@ const updateTooltip = (player, isPinned = false) => {
     if (tooltipElements.playerName) tooltipElements.playerName.textContent = name;
 
     if (player.trainData && Object.keys(player.trainData).length > 0) {
-        const { destination, trainClass, headcode } = player.trainData;
+        const { destination, trainClass, headcode, trainSpeed } = player.trainData;
 
         if (destination && destination !== "Unknown") {
             if (tooltipElements.destinationDiv) tooltipElements.destinationDiv.textContent = destination;
@@ -443,9 +445,16 @@ const updateTooltip = (player, isPinned = false) => {
             tooltipElements.headcode.style.display = "none";
         }
 
+        if (typeof trainSpeed === "number") {
+            if (tooltipElements.speedDiv) tooltipElements.speedDiv.textContent = `${Math.round(trainSpeed)} mph`;
+            if (tooltipElements.speed) tooltipElements.speed.style.display = "flex";
+        } else if (tooltipElements.speed) {
+            tooltipElements.speed.style.display = "none";
+        }
+
         if (tooltipElements.trainName) tooltipElements.trainName.style.display = "none";
     } else {
-        [tooltipElements.destination, tooltipElements.trainName, tooltipElements.headcode, tooltipElements.trainClass].forEach((el) => {
+        [tooltipElements.destination, tooltipElements.trainName, tooltipElements.headcode, tooltipElements.trainClass, tooltipElements.speed].forEach((el) => {
             if (el) el.style.display = "none";
         });
     }
@@ -803,6 +812,7 @@ const updateServerList = (data = null) => {
                 trainClass: td.class || "Unknown",
                 headcode: td.headcode || "----",
                 trainType: td.headcodeClass || "",
+                trainSpeed: typeof td.trainSpeed === "number" ? td.trainSpeed : null,
             };
         });
     }
@@ -830,7 +840,7 @@ const updateServerList = (data = null) => {
         const count = Array.isArray(state.serverData[jobId]?.players)
             ? state.serverData[jobId].players.length
             : 0;
-        return `${name} (${count} / 50 players)`;
+        return `${name} (${count} / 40 players)`;
     };
 
     const selectedValue = elements.serverSelect.value;
