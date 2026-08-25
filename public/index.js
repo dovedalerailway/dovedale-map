@@ -140,6 +140,8 @@ const tooltipElements = {
     trainClassDiv: elements.tooltip.querySelector("#train-class div"),
     speed: elements.tooltip.querySelector("#speed"),
     speedDiv: elements.tooltip.querySelector("#speed div"),
+    carriages: elements.tooltip.querySelector("#carriages"),
+    carriagesDiv: elements.tooltip.querySelector("#carriages div"),
     server: elements.tooltip.querySelector("#server"),
     serverDiv: elements.tooltip.querySelector("#server div"),
 };
@@ -170,6 +172,7 @@ class AppState {
         this.staleCheckInterval = null;
         this.previousPlayerPosition = {};
         this.positionBuffer = {};
+        this.trainTrail = {};
         this.playerLastUpdateTime = {};
         this.playerTeleport = {};
         this.animationFrameId = null;
@@ -407,6 +410,39 @@ const getPlayerAtPosition = (canvasX, canvasY) => {
         const distance = Math.hypot(screenX - canvasX, screenY - canvasY);
 
         if (distance <= hitRadius) return player;
+
+        // carriages extend the hit area behind the train
+        if (player.trainData) {
+            const consistLength =
+                (CARRIAGE_REAR_TO_FIRST +
+                    (MAX_CARRIAGES - 2) * CARRIAGE_PITCH) *
+                0.5;
+            if (distance <= hitRadius + consistLength) {
+                const trainScale =
+                    state.pinnedPlayer?.username === player.username ||
+                    state.hoveredPlayer?.username === player.username
+                        ? 0.5
+                        : 0.4;
+                const consist = getConsistPositions(
+                    player,
+                    baseCanvasPosition,
+                    trainScale,
+                    state.previousPlayerPosition[getPlayerId(player)]?.angle ?? 0,
+                );
+                for (const car of consist) {
+                    const carScreenX =
+                        car.x * transform.a + car.y * transform.c + transform.e;
+                    const carScreenY =
+                        car.x * transform.b + car.y * transform.d + transform.f;
+                    if (
+                        Math.hypot(carScreenX - canvasX, carScreenY - canvasY) <=
+                        hitRadius
+                    ) {
+                        return player;
+                    }
+                }
+            }
+        }
     }
 
     return null;
@@ -422,7 +458,7 @@ const updateTooltip = (player, isPinned = false) => {
     if (tooltipElements.playerName) tooltipElements.playerName.textContent = name;
 
     if (player.trainData && Object.keys(player.trainData).length > 0) {
-        const { destination, trainClass, headcode, trainSpeed } = player.trainData;
+        const { destination, trainClass, headcode, trainSpeed, carriageAmount } = player.trainData;
 
         if (destination && destination !== "Unknown") {
             if (tooltipElements.destinationDiv) tooltipElements.destinationDiv.textContent = destination;
@@ -452,9 +488,16 @@ const updateTooltip = (player, isPinned = false) => {
             tooltipElements.speed.style.display = "none";
         }
 
+        if (typeof carriageAmount === "number" && carriageAmount > 0) {
+            if (tooltipElements.carriagesDiv) tooltipElements.carriagesDiv.textContent = `${carriageAmount} ${carriageAmount === 1 ? "carriage" : "carriages"}`;
+            if (tooltipElements.carriages) tooltipElements.carriages.style.display = "flex";
+        } else if (tooltipElements.carriages) {
+            tooltipElements.carriages.style.display = "none";
+        }
+
         if (tooltipElements.trainName) tooltipElements.trainName.style.display = "none";
     } else {
-        [tooltipElements.destination, tooltipElements.trainName, tooltipElements.headcode, tooltipElements.trainClass, tooltipElements.speed].forEach((el) => {
+        [tooltipElements.destination, tooltipElements.trainName, tooltipElements.headcode, tooltipElements.trainClass, tooltipElements.speed, tooltipElements.carriages].forEach((el) => {
             if (el) el.style.display = "none";
         });
     }
@@ -813,6 +856,10 @@ const updateServerList = (data = null) => {
                 headcode: td.headcode || "----",
                 trainType: td.headcodeClass || "",
                 trainSpeed: typeof td.trainSpeed === "number" ? td.trainSpeed : null,
+                carriageAmount:
+                    Number.isInteger(td.carriageAmount) && td.carriageAmount > 0
+                        ? td.carriageAmount
+                        : null,
             };
         });
     }
@@ -925,6 +972,140 @@ const TRAIN_PATH = {
     outline: new Path2D("M1 1 l10 0 l1 2 l-1 2 l-10 0 Z"),
 };
 
+const CARRIAGE_PATH = {
+    body: new Path2D("M-3.5 1 l6.25 0 l0.75 0.5 l0 3 l-0.75 0.5 l-6.25 0 l-0.75 -0.5 l0 -3 l0.75 -0.5 Z"),
+    window: new Path2D("M-2.75 2.25 l1.25 0 l0 1.5 l-1.25 0 Z M-0.75 2.25 l1.25 0 l0 1.5 l-1.25 0 Z M1.25 2.25 l1.25 0 l0 1.5 l-1.25 0 Z"),
+    outline: new Path2D("M-3.5 1 l6.25 0 l0.75 0.5 l0 3 l-0.75 0.5 l-6.25 0 l-0.75 -0.5 l0 -3 l0.75 -0.5 Z"),
+};
+
+const CARRIAGE_REAR_TO_FIRST = 8.5;
+const CARRIAGE_PITCH = 8;
+const MAX_CARRIAGES =12; //No clue if there are trains with greater than 8, but set 12 as default max 
+
+const TRAIL_STEP_PX = 0.5;
+const TRAIL_MAX_POINTS = 150;
+
+const updateTrainTrail = (uid, worldX, worldY, step) => {
+    const trail = state.trainTrail[uid];
+    const last = trail?.[trail.length - 1];
+
+    if (last) {
+        const dx = worldX - last.x;
+        const dy = worldY - last.y;
+        const moved = dx * dx + dy * dy;
+
+        if (moved > TELEPORT_THRESHOLD * TELEPORT_THRESHOLD) {
+            state.trainTrail[uid] = [{ x: worldX, y: worldY }];
+            return;
+        }
+        if (moved < step * step) return;
+    }
+
+    if (!state.trainTrail[uid]) state.trainTrail[uid] = [];
+    state.trainTrail[uid].push({ x: worldX, y: worldY });
+
+    if (state.trainTrail[uid].length > TRAIL_MAX_POINTS) {
+        state.trainTrail[uid].shift();
+    }
+};
+
+const getCarriageTrail = (uid, canvasPosition, trainScale) => {
+    const trail = state.trainTrail[uid];
+    if (!trail || trail.length < 2) return null;
+
+    const points = [canvasPosition];
+    for (let i = trail.length - 1; i >= 0; i--) {
+        points.push(worldToCanvas(trail[i].x, trail[i].y));
+    }
+
+    const dist = [0];
+    for (let i = 1; i < points.length; i++) {
+        dist.push(
+            dist[i - 1] +
+                Math.hypot(
+                    points[i].x - points[i - 1].x,
+                    points[i].y - points[i - 1].y,
+                ),
+        );
+    }
+
+    if (dist[dist.length - 1] < CARRIAGE_REAR_TO_FIRST * trainScale) return null;
+
+    const result = [];
+    for (let k = 0; k < MAX_CARRIAGES - 1; k++) {
+        const target = (CARRIAGE_REAR_TO_FIRST + k * CARRIAGE_PITCH) * trainScale;
+
+        if (target <= dist[dist.length - 1]) {
+            let i = 1;
+            while (i < dist.length - 1 && dist[i] < target) i++;
+
+            const t = (target - dist[i - 1]) / (dist[i] - dist[i - 1]);
+            result.push({
+                x: points[i - 1].x + (points[i].x - points[i - 1].x) * t,
+                y: points[i - 1].y + (points[i].y - points[i - 1].y) * t,
+                angle: Math.atan2(
+                    points[i - 1].y - points[i].y,
+                    points[i - 1].x - points[i].x,
+                ),
+            });
+            continue;
+        }
+
+        const end = points.length - 1;
+        let i = end;
+        while (
+            i > 0 &&
+            Math.hypot(
+                points[i].x - points[i - 1].x,
+                points[i].y - points[i - 1].y,
+            ) < 1e-6
+        ) {
+            i--;
+        }
+
+        const dx = points[i].x - points[i - 1].x;
+        const dy = points[i].y - points[i - 1].y;
+        const len = Math.hypot(dx, dy);
+        const extra = target - dist[dist.length - 1];
+
+        result.push({
+            x: points[end].x + (dx / len) * extra,
+            y: points[end].y + (dy / len) * extra,
+            angle: Math.atan2(-dy, -dx),
+        });
+    }
+    return result;
+};
+
+const getConsistPositions = (player, canvasPosition, trainScale, angle) => {
+    const amount = player.trainData?.carriageAmount;
+    if (typeof amount !== "number" || amount < 2) return [];
+
+    const count = Math.min(MAX_CARRIAGES - 1, Math.round(amount) - 1);
+    const trail = getCarriageTrail(getPlayerId(player), canvasPosition, trainScale);
+
+    const positions = [];
+    for (let k = 0; k < count; k++) {
+        const car = trail?.[k];
+        positions.push({
+            x: car
+                ? car.x
+                : canvasPosition.x -
+                  Math.cos(angle) *
+                      (CARRIAGE_REAR_TO_FIRST + k * CARRIAGE_PITCH) *
+                      trainScale,
+            y: car
+                ? car.y
+                : canvasPosition.y -
+                  Math.sin(angle) *
+                      (CARRIAGE_REAR_TO_FIRST + k * CARRIAGE_PITCH) *
+                      trainScale,
+            angle: car ? car.angle : angle,
+        });
+    }
+    return positions;
+};
+
 const FOLLOW_LERP = 0.12;
 
 const drawScene = () => {
@@ -1013,6 +1194,11 @@ const drawScene = () => {
 
     const dotScaleFactor = Math.max(0.3, 1 / Math.pow(state.currentScale, 0.4));
 
+    const a = worldToCanvas(WORLD_BOUNDS.TOP_LEFT.x, 0);
+    const b = worldToCanvas(WORLD_BOUNDS.TOP_LEFT.x + 1000, 0);
+    const pxPerWorld = Math.hypot(b.x - a.x, b.y - a.y) / 1000;
+    const trailStep = Math.max(TRAIL_STEP_PX / pxPerWorld, 0.01);
+
     let activePlayerIds = [];
     playersToShow.forEach((player) => {
         const uid = getPlayerId(player);
@@ -1031,6 +1217,8 @@ const drawScene = () => {
         const radius = baseRadius * dotScaleFactor;
 
         if (player.trainData) {
+            updateTrainTrail(uid, worldX, worldY, trailStep);
+
             // derive angle from the buffer segment currently being rendered
             let markerAngle =
                 state.previousPlayerPosition[uid]?.angle ?? 0;
@@ -1058,10 +1246,37 @@ const drawScene = () => {
             //  draw the train by hand!
             const trainMarkerDim = { x: 12, y: 6 };
             const trainScale = isPinned || isHovered ? 0.5 : 0.4;
+
+            // DRAW CARRIAGES
+            const consist = getConsistPositions(
+                player,
+                canvasPosition,
+                trainScale,
+                markerAngle,
+            );
+            for (const car of consist) {
+                context.translate(car.x, car.y);
+                context.rotate(car.angle);
+                context.scale(trainScale, trainScale);
+                context.translate(0, -3);
+                context.fillStyle = getPlayerColor(name);
+                context.fill(CARRIAGE_PATH.body); // BODY
+                context.fillStyle = "#000080";
+                context.fill(CARRIAGE_PATH.window); // WINDOWS
+                context.strokeStyle = isPinned || isHovered ? "white" : "black";
+                context.lineWidth = 1;
+                context.stroke(CARRIAGE_PATH.outline); // OUTLINE
+                context.translate(0, 3);
+                context.scale(1 / trainScale, 1 / trainScale);
+                context.rotate(-car.angle);
+                context.translate(-car.x, -car.y);
+            }
+
             context.translate(canvasPosition.x, canvasPosition.y);
             context.rotate(markerAngle);
             context.scale(trainScale, trainScale);
             context.translate(-trainMarkerDim.x / 2, -trainMarkerDim.y / 2);
+
             context.fillStyle = getPlayerColor(name);
             context.fill(TRAIN_PATH.body); // BODY
             context.fillStyle = "#00000020";
@@ -1079,6 +1294,9 @@ const drawScene = () => {
 
             state.previousPlayerPosition[uid] = { angle: markerAngle };
         } else {
+            if (state.trainTrail[uid]) {
+                delete state.trainTrail[uid];
+            }
             context.fillStyle = getPlayerColor(name);
             context.beginPath();
             context.arc(
@@ -1128,6 +1346,7 @@ const drawScene = () => {
         if (!activeSet.has(id)) {
             delete state.previousPlayerPosition[id];
             delete state.positionBuffer[id];
+            delete state.trainTrail[id];
             delete state.playerLastUpdateTime[id];
             delete state.playerTeleport[id];
         }

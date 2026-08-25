@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="9mm"
+   height="4mm"
+   viewBox="-5 0 10 6"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1">
+   <path
+      id = "mainBody"
+      style="fill:#d45500;stroke:none;"
+      d = "M-3.5 1 l6.25 0 l0.75 0.5 l0 3 l-0.75 0.5 l-6.25 0 l-0.75 -0.5 l0 -3 l0.75 -0.5 Z"/>
+   <path
+      id = "window"
+      style="fill:#000080;stroke:none;"
+      d = "M-2.75 2.25 l1.25 0 l0 1.5 l-1.25 0 Z M-0.75 2.25 l1.25 0 l0 1.5 l-1.25 0 Z M1.25 2.25 l1.25 0 l0 1.5 l-1.25 0 Z"/>
+   <path
+      id = "outline"
+      style="fill:none;stroke:#000000;stroke-width:1;"
+      d = "M-3.5 1 l6.25 0 l0.75 0.5 l0 3 l-0.75 0.5 l-6.25 0 l-0.75 -0.5 l0 -3 l0.75 -0.5 Z"/>
+  </g>
+</svg>

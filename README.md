@@ -12,7 +12,7 @@ Feel free to have a look through the code or contribute - just make sure you fol
 
 ## WebSocket Usage
 You are free to use the data provided by the Live Map for your own projects.
-You can connect to the WebSocket at `https://map.dovedale.wiki/ws` and you will receive a message every time a Roblox server sends a request to the web server, messages look like this:
+You can connect to the WebSocket at `wss://map.dovedale.wiki/api/ws` and you will receive a message every time a Roblox server sends a request to the web server, messages look like this:
 ```json
 {
 	"jobId": "0cf6c9f0-36be-4b98-8878-0e4a88913ea1",
